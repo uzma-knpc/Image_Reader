@@ -1,0 +1,28 @@
+[project]
+name = "imagereader"
+version = "0.1.0"
+description = "This image reader is used for reading medical images and generating reports"
+readme = "README.md"
+authors = [
+    { name = "uzmailyas", email = "uzma.paec@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+imagereader = "imagereader.main:main"
+getfile = "imagereader.main:get_file_from_user"
+read = "imagereader.main:read"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+facenet-pytorch = "*"
+matplotlib = "*"
+transformers = "*"
+torch = "*"
+onnxruntime-cpu = "*"
+torchvision = "*"

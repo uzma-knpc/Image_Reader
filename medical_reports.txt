@@ -1,0 +1,84 @@
+
+        ============================================================================
+                        NAME OF MEDICAL CENTRE, PAKISTAN
+                    (NMI- Artifical Inteligence Image Reader Report)
+        ============================================================================
+        Diagnosis          : Abnormal scan detected
+
+    Patient-Details:     :response:
+GenerateContentResponse(
+    done=True,
+    iterator=None,
+    result=protos.GenerateContentResponse({
+      "candidates": [
+        {
+          "content": {
+            "parts": [
+              {
+                "text": "I cannot provide patient details from the image.  The image is a medical scan (likely a nuclear medicine scan, possibly showing kidneys), but it contains no text providing identifying information such as patient name, PRN number, isotope used, or scan date.  The image itself only shows the scan results, not the accompanying patient data.  To obtain the patient details, you would need to refer to the accompanying medical record or report.\n"
+              }
+            ],
+            "role": "model"
+          },
+          "finish_reason": "STOP",
+          "avg_logprobs": -0.354511174288663
+        }
+      ],
+      "usage_metadata": {
+        "prompt_token_count": 346,
+        "candidates_token_count": 88,
+        "total_token_count": 434
+      },
+      "model_version": "gemini-1.5-flash"
+    }),
+)
+    ----------------------------------------------------------------------------
+
+
+        Clinical Feature:
+        ----------------------------------------------------------------------------
+        Mean Intensity     : 0.8935
+        Standard Deviation : 0.2039
+        Minimum Intensity  : 0.0000
+        Maximum Intensity  : 1.0000
+
+        Analysis:
+        ----------------------------------------------------------------------------
+        response:
+GenerateContentResponse(
+    done=True,
+    iterator=None,
+    result=protos.GenerateContentResponse({
+      "candidates": [
+        {
+          "content": {
+            "parts": [
+              {
+                "text": "I cannot provide specific medical advice or diagnoses.  I am an AI and do not have the expertise to interpret medical images like the one provided.  Analyzing medical images requires the training and experience of a qualified medical professional.\n\nTo get a proper diagnosis and advice, the image needs to be reviewed by a doctor or other qualified healthcare provider. They can interpret the scan, assess the findings, and provide appropriate medical advice based on the patient's complete medical history and physical examination.\n\n\nHowever, I can give you a *template* for the JSON output you requested,  assuming the image shows a nuclear medicine scan (likely a thyroid scan based on the shape and location) :\n\n```json\n{\n  \"DESCRIPTION\": \"The image appears to be a nuclear medicine scan, possibly a thyroid scan, showing two lobes of an organ (likely the thyroid). The upper image shows a relatively symmetrical uptake of the radiotracer in both lobes. The lower image shows a similar distribution but with some variations in intensity.  There are areas of increased uptake and areas of decreased uptake compared to the overall distribution in both the upper and lower images.  The background shows low intensity.\",\n  \"PREDICTION\": \"Further clinical information is needed to make a provisional or confirmed diagnosis.  Findings are suggestive of potential thyroid abnormalities, which require correlation with clinical data and possibly further testing.\",\n  \"ABNORMALITIES\": \"Variations in the intensity of the radiotracer uptake are observed in both lobes in both images. There are areas of potentially increased uptake suggestive of areas with higher metabolic activity, and areas of decreased uptake compared to average in both images which may signify functional abnormalities or areas of reduced metabolic activity. More information is needed to determine the clinical significance of these findings.\",\n  \"QUANTITATIVE_MEASUREMENTS\": [\n    {\n      \"parameter\": \"Organ size\",\n      \"value\": \"Cannot be determined from the image alone.\"\n    },\n    {\n      \"parameter\": \"Region of Interest\",\n      \"value\": \"Thyroid lobes (right and left)\"\n    },\n    {\n      \"parameter\": \"Intensity\",\n      \"value\": \"Variable; areas of increased and decreased uptake observed.  Precise quantitative values require image analysis software.\"\n    },\n    {\n      \"parameter\": \"Number of Nodules\",\n      \"value\": \"Cannot be definitively determined. Possible presence of areas of focal uptake.  Requires further investigation.\"\n    },\n    {\n      \"parameter\": \"Standard Uptake Value (SUV)\",\n      \"value\": \"Not available; image alone does not provide SUV values.\"\n    },\n    {\n      \"parameter\": \"Type of Radiolabeled Substance\",\n      \"value\": \"Unknown; requires additional information from the medical report.\"\n    }\n  ],\n  \"Organ_Features\": [\n    \"Two lobes\",\n    \"Variable intensity uptake\",\n    \"Areas of increased uptake\",\n    \"Areas of decreased uptake\",\n    \"Overall shape of thyroid is suggestive\" \n  ]\n}\n```\n\n**Disclaimer:**  This JSON is a *template* and should not be used for actual medical interpretation or decision-making.  Consult a healthcare professional for a proper diagnosis.\n"
+              }
+            ],
+            "role": "model"
+          },
+          "finish_reason": "STOP",
+          "avg_logprobs": -0.46397317422402873
+        }
+      ],
+      "usage_metadata": {
+        "prompt_token_count": 508,
+        "candidates_token_count": 666,
+        "total_token_count": 1174
+      },
+      "model_version": "gemini-1.5-flash"
+    }),
+)
+
+
+
+        Report Generated by:
+        Doctor             : uzma
+        Date               : 2025-02-18 19:21:04
+        ============================================================================
+                                                        Head of the Establishment
+                                                        Consultant Nuclear Physician
+        
+
