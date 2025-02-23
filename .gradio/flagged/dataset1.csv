@@ -1,0 +1,261 @@
+Upload Medical Image,Doctor's Name,Medical Report,timestamp
+.gradio/flagged/Upload Medical Image/45521b50d0bc4930bcc6/thy_scan_toxic_multinodular_big_02.png,Dr.AI,"'
+
+
+
+===================================================================================
+                        NAME OF MEDICAL CENTRE, PAKISTAN
+                        (AI-Assisted Image Analysis Report)
+ ===================================================================================
+**Report ID:** 1  
+**Scan Name:** uploaded_image.jpg  
+**Date:** 2025-02-23 12:41:22  
+-------------------------------------------------------------------------------------
+### Diagnosis
+Abnormal scan detected
+-------------------------------------------------------------------------------------
+### Patient Details
+The provided image is a medical scan showing a thyroid before and after radioiodine treatment.  It does *not* contain patient details such as name, PRN number, or scan date.  Therefore, I cannot provide a formatted list of patient details as requested.  The image only shows the visual results of the radioiodine therapy on the thyroid gland.
+
+-------------------------------------------------------------------------------------
+### Clinical Measurements
+* Mean Intensity: 0.8460
+* Standard Deviation: 0.2446
+* Minimum Intensity: 0.0000
+* Maximum Intensity: 1.0000
+
+### Analysis and Findings
+```json
+{
+  ""DESCRIPTION"": ""The medical image shows a thyroid gland before and after radioiodine treatment.  Before treatment, the thyroid shows a relatively large, homogenous uptake of the radiotracer, with a somewhat irregular shape.  After treatment, the uptake appears reduced in intensity and size, indicating a response to the radioiodine therapy. The upper lobes are somewhat more affected than the lower lobe. The images suggest a possible thyroid nodule or area of increased activity before treatment, but it's hard to quantify precisely without additional information and more precise measurement tools."",
+  ""PREDICTION"": ""Possible hyperthyroidism treated with radioiodine.  Further evaluation of the patient's clinical history, including symptoms, thyroid hormone levels (TSH, T3, T4), and a physical examination is necessary to confirm the diagnosis and assess treatment efficacy."",
+  ""ABNORMALITIES"": ""Before radioiodine treatment, the image suggests a possible thyroid nodule or area of increased activity within the thyroid gland.  The size and location of this area of increased uptake are not precisely defined in this image. After treatment, the reduced intensity and size suggest a response to therapy, but the possibility of residual thyroid tissue or incomplete ablation remains."",
+  ""QUANTITATIVE_MEASUREMENTS"": [
+    {
+      ""parameter"": ""Organ size"",
+      ""before"": ""Not precisely measurable from image"",
+      ""after"": ""Not precisely measurable from image""
+    },
+    {
+      ""parameter"": ""Region of Interest"",
+      ""before"": ""Entire thyroid gland"",
+      ""after"": ""Entire thyroid gland""
+    },
+    {
+      ""parameter"": ""Intensity"",
+      ""before"": ""High, homogenous with possible focal increase"",
+      ""after"": ""Reduced compared to before treatment""
+    },
+    {
+      ""parameter"": ""Number of Nodules"",
+      ""before"": ""Possibly one or more, not clearly defined"",
+      ""after"": ""Not clearly defined""
+
+    },
+    {
+      ""parameter"": ""Standard Uptake Value (SUV)"",
+      ""before"": ""Not provided in image"",
+      ""after"": ""Not provided in image""
+    },
+    {
+      ""parameter"": ""Type of Radiolabeled substance"",
+      ""value"": ""Radioiodine (I-131 is likely, but not explicitly stated)""
+    }
+  ],
+  ""Organ Features"": [
+    ""Heterogeneous uptake (before treatment)"",
+    ""Reduced uptake (after treatment)"",
+    ""Possible nodule(s) (before treatment)"",
+    ""Irregular shape (before treatment)""
+  ]
+}
+```
+
+
+### Authentication
+**Reporting Doctor:** Dr.AI  
+**Report Generated:** 2025-02-23 12:41:22
+
+---
+
+                                                        *Head of Department*  
+                                                        Consultant  Physician  
+                                                Atomic Energy Cancer Hospital, PAKISTAN
+",2025-02-23 12:41:54.808081
+.gradio/flagged/Upload Medical Image/60ff62573d6cb29e2b6e/thyroid.jpg,dr.ai,"'
+
+
+
+===================================================================================
+                        NAME OF MEDICAL CENTRE, PAKISTAN
+                        (AI-Assisted Image Analysis Report)
+ ===================================================================================
+**Report ID:** 1  
+**Scan Name:** uploads/temp_image.jpg  
+**Date:** 2025-02-23 12:49:10  
+-------------------------------------------------------------------------------------
+### Diagnosis
+Abnormal scan detected
+-------------------------------------------------------------------------------------
+### Patient Details
+Here's a formatted representation of the patient details extracted from the image:
+
+**Patient_Detail:**
+
+* **Name:** MANSOOR MISZY MR
+* **PRN-NO:** IL/161184/SPECT/THY 03
+* **Isotope:** Technetium 99m (implied, not explicitly stated)
+* **Scan Date:** 04-11-2016
+* **Study Name:** Tc Thyroid Uptake
+* **Manufacturer Model:** Tandem, Brive 615
+* **Imaging Center:** IMAGING LILY PADIVATTOM KOCHI-682 024
+
+
+**Note:** The isotope is inferred from the common use of Technetium-99m in thyroid uptake scans.  The image does not explicitly state it.
+
+-------------------------------------------------------------------------------------
+### Clinical Measurements
+* Mean Intensity: 0.8670
+* Standard Deviation: 0.1693
+* Minimum Intensity: 0.0000
+* Maximum Intensity: 1.0000
+
+### Analysis and Findings
+```json
+{
+  ""DESCRIPTION"": ""The medical image shows a Tc-99m thyroid uptake scan.  The image on the left is a color-coded intensity map, with orange representing lower activity and purple/blue representing higher activity. The image on the right is a grayscale representation with regions of interest (ROIs) outlined on the thyroid lobes. The thyroid gland appears to be present in its normal anatomical location in the neck. The overall uptake of the radiotracer appears relatively uniform within the thyroid gland. There are no visually obvious large nodules or masses."",
+  ""PREDICTION"": ""Based on the provided image alone, the provisional diagnosis is consistent with a normal or mildly heterogeneous thyroid uptake. Further clinical correlation and interpretation are necessary."",
+  ""ABNORMALITIES"": ""No significant abnormalities are readily apparent from this image. However, subtle heterogeneity may be present. This requires correlation with clinical findings, patient history, and potentially other imaging modalities."",
+  ""QUANTITATIVE_MEASUREMENTS"": [
+    {
+      ""Organ size"": ""Not directly measurable from this image.  Requires additional information or other imaging modalities (e.g., ultrasound)."",
+      ""Region of Interest"": ""Left lobe, Right lobe, Thyroid gland (whole)"",
+      ""Intensity"": ""Left lobe: ~15%; Right lobe: ~15%; Whole Thyroid: ~15% (approximate values based on the image). Heterogeneity might be present, but quantification is limited by the image resolution."",
+      ""Number of Nodules"": ""0 (visually apparent). More sensitive techniques might reveal smaller nodules."",
+      ""standard uptake value"": ""Not provided in the image. Requires further calculation from the raw data."",
+      ""Type of Radiolabeled substance"": ""Technetium-99m (Tc-99m)""
+    }
+  ],
+  ""Organ Features"": [
+    ""Bilateral thyroid lobes present"",
+    ""Appears anatomically situated"",
+    ""Relatively uniform uptake (some minor heterogeneity possible)"",
+    ""Absence of grossly visible nodules or masses"",
+    ""No significant extra-thyroidal uptake observed""
+  ]
+}
+```
+
+
+### Authentication
+**Reporting Doctor:** dr.ai  
+**Report Generated:** 2025-02-23 12:49:10
+
+---
+
+                                                        *Head of Department*  
+                                                        Consultant  Physician  
+                                                Atomic Energy Cancer Hospital, PAKISTAN
+",2025-02-23 12:51:28.521954
+.gradio/flagged/Upload Medical Image/dc7d83764074876704f6/thy.jpeg,ai,"'
+
+
+
+===================================================================================
+                        NAME OF MEDICAL CENTRE, PAKISTAN
+                        (AI-Assisted Image Analysis Report)
+ ===================================================================================
+**Report ID:** 1  
+**Scan Name:** temp_image.jpg  
+**Date:** 2025-02-23 13:24:26  
+-------------------------------------------------------------------------------------
+**Diagnosis
+Scan appears normal
+-------------------------------------------------------------------------------------
+**Patient Details
+I cannot extract patient details from the provided image.  The image appears to be a medical scan (possibly a nuclear medicine scan), but it lacks any text or annotations containing patient information like name, PRN number, isotope used, scan date, etc.  The image itself shows only the scan results, not identifying data. To obtain patient details, additional information is needed – either a separate document associated with the scan or a higher-resolution image that includes text.
+
+-------------------------------------------------------------------------------------
+*******Clinical Measurements**********
+* Mean Intensity: 0.3182
+* Standard Deviation: 0.2596
+* Minimum Intensity: 0.0000
+* Maximum Intensity: 1.0000
+
+*** Analysis and Findings
+I cannot provide a JSON formatted medical analysis based on the provided image.  The image is too low resolution and lacks critical information necessary for a proper medical interpretation.  I need additional context, such as:
+
+* **Image Modality:** What type of imaging is this (e.g., SPECT, PET, planar scintigraphy)?  The color scale and granular appearance suggest a nuclear medicine scan, but this needs confirmation.  Knowing the modality is crucial to interpreting the intensity values.
+
+* **Radiotracer:**  Which radiolabeled substance was used (e.g., Tc-99m sestamibi, FDG)?  Different tracers target different tissues and processes.
+
+* **Patient Information:** The age, sex, and clinical presentation of the patient are essential to interpret the scan findings.
+
+* **Calibration and Scale:**  The image lacks a scale, making it impossible to measure organ size or regions of interest (ROIs).  Quantitative measurements are impossible without knowing the scale.  Even the color scale is not clearly defined.
+
+* **Associated Notes and Graph:** The prompt mentions accompanying notes and a graph, but these are absent.  This information could be crucial for the analysis.
+
+
+**Without this essential information, any analysis would be pure speculation and potentially dangerous.**  Providing a diagnosis or treatment advice based on this image alone would be highly irresponsible and unethical.
+
+
+**Example of how the JSON would look if complete data were provided:** (Note: this is a hypothetical example, not based on the provided image)
+
+```json
+{
+  ""DESCRIPTION"": ""The image shows a planar scintigraphy of the parathyroid glands using Tc-99m sestamibi.  The right superior parathyroid gland shows increased uptake (hot nodule) compared to the left, consistent with parathyroid adenoma."",
+  ""PREDICTION"": ""Possible Parathyroid Adenoma (Right Superior Gland)"",
+  ""ABNORMALITIES"": ""Increased uptake in the right superior parathyroid gland suggestive of a hyperfunctioning adenoma."",
+  ""QUANTITATIVE_MEASUREMENTS"": [
+    {
+      ""parameter"": ""Organ Size (Right Superior Gland)"",
+      ""value"": ""1.2 cm (approximate)"",
+      ""units"": ""cm""
+    },
+    {
+      ""parameter"": ""Region of Interest (ROI)"",
+      ""value"": ""Right Superior Parathyroid Gland"",
+      ""units"": ""N/A""
+    },
+    {
+      ""parameter"": ""Intensity (Right Superior Gland)"",
+      ""value"": ""350"",
+      ""units"": ""counts/pixel""
+    },
+    {
+      ""parameter"": ""Number of Nodules"",
+      ""value"": ""1"",
+      ""units"": ""N/A""
+    },
+    {
+      ""parameter"": ""Standard Uptake Value (SUV)"",
+      ""value"": ""N/A (Not applicable for this modality)"",
+      ""units"": ""N/A""
+    },
+    {
+      ""parameter"": ""Type of Radiolabeled Substance"",
+      ""value"": ""Tc-99m sestamibi"",
+      ""units"": ""N/A""
+    }
+  ],
+  ""ORGAN_FEATURES"": [
+    ""Increased uptake"",
+    ""Nodular appearance"",
+    ""Asymmetry between glands""
+  ]
+}
+```
+
+To obtain a proper medical analysis, please provide a complete set of data and higher resolution images.  This should be done in consultation with a qualified medical professional who can correctly interpret the findings.
+
+
+*** Authentication
+**Reporting Doctor:** ai  
+**Report Generated:** 2025-02-23 13:24:26
+
+---
+ 
+                                                         Head of Department  
+                                                        Consultant  Physician  
+                                                Atomic Energy Cancer Hospital, PAKISTAN
+",2025-02-23 13:24:46.100311
