@@ -44,7 +44,7 @@ def process_image(image, doctor_name):
     # Save report to Downloads/Image folder
     downloads_path = str(Path.home() / "Downloads" / "Image")
     os.makedirs(downloads_path, exist_ok=True)
-    report_path = os.path.join(downloads_path, f"medical_report_{doctor_name}.txt")
+    report_path = os.path.join(downloads_path, f"medical_report_{doctor_name}.md")
     
     return reports[0], fig, report_path
 

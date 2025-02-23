@@ -213,42 +213,41 @@ class practice:
     # Function to generate a medical report
     def generate_report(self, scan_id, scan_name, diagnosis, metrics, doctor_name):
         report = f"""
-=============================================================================================
-                        🏥 MEDICAL IMAGING ANALYSIS REPORT
-                          AI-Assisted Image Analysis Report
-                          Atomic Energy Cancer Hospital, PAKISTAN
-=============================================================================================
+# 🏥 MEDICAL IMAGING ANALYSIS REPORT
+## Atomic Energy Cancer Hospital, PAKISTAN
+### AI-Assisted Image Analysis Report
 
-📋 Report Details**
-- Report ID:--{scan_id}
-- Scan Name:--{scan_name}
-- Date:------ {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+---
 
-🔍 **DIAGNOSI**
+📋 **Report Details**
+- **Report ID:** {scan_id}
+- **Scan Name:** {scan_name}
+- **Date:** {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
+🔍 **Diagnosis**
 {diagnosis}
 
-👤 **PATIENT DETAILS**
+👤 **Patient Details**
 {self.response_gen1.text}
 
-📊 **CLINICAL MEASUREMENTS**
+📊 **Clinical Measurements**
 - Mean Intensity: {metrics["Mean Intensity"]:.4f}
 - Standard Deviation: {metrics["Standard Deviation"]:.4f}
 - Minimum Intensity: {metrics["Minimum Intensity"]:.4f}
 - Maximum Intensity: {metrics["Maximum Intensity"]:.4f}
 
-📝 **ANALYSIS AND FINDINGS**
+📝 **Analysis and Findings**
 {self.response_gen.text}
 
-✅ **AUTHENTICATION**
-- Reporting Doctor:- {doctor_name}
-- Report Generated:*- {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+✅ **Authentication**
+- **Reporting Doctor:** {doctor_name}
+- **Report Generated:** {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
-=============================================================================================
+---
 
-                                                         Head of Department
-                                                        Consultant  Physician
-                                                    Atomic Energy Cancer Hospital,Pakistan
-=============================================================================================
+                                                    Head of Department
+                                                    Consultant Nuclear Physician
+                                                    Atomic Energy Cancer Hospital
 """
         return report
 
@@ -306,7 +305,7 @@ def uz():
         reports = obj.process_and_generate_reports(file_paths, titles, doctor_name)
         
         # Save reports
-        with open("medical_reports.txt", "w") as f:
+        with open("medical_reports.md", "w") as f:
             for report in reports:
                 f.write(report + "\n\n")
         print("Reports generated and saved as 'medical_reports.md'.")

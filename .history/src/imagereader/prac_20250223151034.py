@@ -213,11 +213,12 @@ class practice:
     # Function to generate a medical report
     def generate_report(self, scan_id, scan_name, diagnosis, metrics, doctor_name):
         report = f"""
-=============================================================================================
-                        🏥 MEDICAL IMAGING ANALYSIS REPORT
-                          AI-Assisted Image Analysis Report
-                          Atomic Energy Cancer Hospital, PAKISTAN
-=============================================================================================
+========================================================
+******* 🏥 MEDICAL IMAGING ANALYSIS REPORT********
+_____ Atomic Energy Cancer Hospital, PAKISTAN_____
+________AI-Assisted Image Analysis Report__________
+
+=========================================================
 
 📋 Report Details**
 - Report ID:--{scan_id}
@@ -243,12 +244,11 @@ class practice:
 - Reporting Doctor:- {doctor_name}
 - Report Generated:*- {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
-=============================================================================================
+=========================================================
 
-                                                         Head of Department
-                                                        Consultant  Physician
-                                                    Atomic Energy Cancer Hospital,Pakistan
-=============================================================================================
+                                                    Head of Department
+                                                    Consultant Nuclear Physician
+                                                    Atomic Energy Cancer Hospital
 """
         return report
 

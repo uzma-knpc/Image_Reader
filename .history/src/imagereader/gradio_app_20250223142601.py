@@ -44,9 +44,13 @@ def process_image(image, doctor_name):
     # Save report to Downloads/Image folder
     downloads_path = str(Path.home() / "Downloads" / "Image")
     os.makedirs(downloads_path, exist_ok=True)
-    report_path = os.path.join(downloads_path, f"medical_report_{doctor_name}.txt")
+    report_path = os.path.join(downloads_path, f"medical_report_{doctor_name}.md")
     
-    return reports[0], fig, report_path
+    return {
+        "report": reports[0],
+        "grayscale": fig,
+        "save_path": report_path
+    }
 
 def save_report(report, save_path):
     """Save the report to the specified path"""
@@ -57,17 +61,12 @@ def save_report(report, save_path):
 def main():
     # Create Gradio interface
     with gr.Blocks(title="MEDICAL IMAGE ANALYSIS SYSTEM") as iface:
-        gr.Markdown("""
-            <div style='text-align: center'>
-                <h1 style='font-size: 2.5em; font-weight: bold'>MEDICAL IMAGE ANALYSIS SYSTEM</h1>
-                <h2 style='font-size: 1.5em; font-weight: bold'>ATOMIC ENERGY CANCER HOSPITAL</h2>
-                <p style='font-size: 1em; color: gray'>AI-Assisted Image Analysis</p>
-            </div>
-        """)
+        gr.Markdown("# MEDICAL IMAGE ANALYSIS SYSTEM")
+        gr.Markdown("## Atomic Energy Cancer Hospital, PAKISTAN")
         
         with gr.Row():
             with gr.Column():
-                input_image = gr.Image(type="pil", image_mode="L", label="Upload Medical Image")
+                input_image = gr.Image(type="pil", label="Upload Medical Image")
                 doctor_name = gr.Textbox(label="Doctor's Name")
                 process_btn = gr.Button("Process Image")
             
@@ -79,18 +78,15 @@ def main():
         save_btn = gr.Button("Save Report")
         save_status = gr.Textbox(label="Save Status")
         
-        # Footer
-        gr.Markdown("""
-            <div style='text-align: right; margin-top: 20px'>
-                <p style='font-size: 12px; font-style: italic'>@Pakistan Atomic Energy Commission</p>
-            </div>
-        """)
-        
         # Handle processing
-        process_btn.click(
+        outputs = process_btn.click(
             process_image,
             inputs=[input_image, doctor_name],
-            outputs=[report_output, grayscale_output, save_path_output]
+            outputs={
+                "report": report_output,
+                "grayscale": grayscale_output,
+                "save_path": save_path_output
+            }
         )
         
         # Handle saving

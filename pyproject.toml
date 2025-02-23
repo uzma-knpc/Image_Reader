@@ -15,7 +15,8 @@ dependencies = [
     "transformers",
     "torch",
     "torchvision",
-    "gradio>=4.19.0"
+    "gradio>=4.19.0",
+    "rich>=13.9.4",
 ]
 
 [project.scripts]
