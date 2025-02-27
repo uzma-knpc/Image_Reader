@@ -138,17 +138,19 @@ class practice:
 
     # Function to Extract Features
     def extract_features(self, image_tensor=None):
+        # Remove the classification head to extract features
+        feature_extractor = nn.Sequential(*list(self.model.children())[:-1])
+        """Extract features from image tensor"""
         if image_tensor is None:
+            # Get tensor from preprocessed image if not provided
             image_tensor = self.preprocess_image()
-        
+            print(f"image tensor{image_tensor}")
         with torch.no_grad():
-            features = self.model(image_tensor)
-            features_np = features.numpy().flatten()
-            
-            # Add visualization
-            self.visualize_features(features_np)
-            
-            return features_np
+            features = self.model(image_tensor)  # Extract features
+            #features1 = feature_extractor(image)
+
+            print(features.shape)  # Expected output: [1, 1280, 1, 1]
+        return features.numpy().flatten()
 
     # Function to create image embeddings
     def create_image_embedding(self, image_path=None):
@@ -255,16 +257,7 @@ class practice:
 - Skewness: {metrics["Skewness"]:.4f}
 - Kurtosis: {metrics["Kurtosis"]:.4f}
 - Uptake Percentage: {metrics["Uptake Percentage"]:.4f}
--------------------------------------------------------------------------------------------------------------
-***Standard Value
--mean_intensity > 0.5 and skewness > 0
- hyperfunctioning areas (hot spots)/
- potentially linked to hyperthyroidism/ bone metastases/renal obstruction. Further evaluation is recommended.\n\n"
--mean_intensity < 0.2 and skewness < 0
-"hypo-functioning areas (cold spots), which may indicate nodules
-renal dysfunction/ bone metastases". 
-"Uptake distribution appears normal. No significant abnormalities detected"
- -------------------------------------------------------------------------------------------------------------       
+
 📝 **ANALYSIS AND FINDINGS**
 {self.response_gen.text}
 
@@ -314,63 +307,11 @@ renal dysfunction/ bone metastases".
 
         # Add colorbar
         plt.tight_layout()
-        # Remove plt.show() from here
-        # plt.show()  # Comment out or remove this line
+        plt.show()
 
         return reports  # Return the generated reports list
     
-    # Add this after calculate_metrics method
-    def visualize_features(self, features):
-        """Visualize feature vector with enhanced plotting"""
-        plt.figure(figsize=(15, 8))
-        
-        # Create main feature plot with grid
-        plt.subplot(2, 1, 1)
-        plt.plot(features, 'b-', alpha=0.6, label='Feature Values')
-        plt.plot(features, 'r.', alpha=0.5, markersize=2)
-        plt.title('Nuclear Image Feature Analysis', fontsize=14, pad=10)
-        plt.xlabel('Feature Index', fontsize=12)
-        plt.ylabel('Feature Value', fontsize=12)
-        plt.grid(True, alpha=0.3, linestyle='--')
-        plt.legend(fontsize=10)
-
-        # Create distribution histogram
-        plt.subplot(2, 1, 2)
-        plt.hist(features, bins=50, color='green', alpha=0.6, density=True)
-        plt.title('Feature Value Distribution', fontsize=12)
-        plt.xlabel('Feature Value', fontsize=10)
-        plt.ylabel('Density', fontsize=10)
-        plt.grid(True, alpha=0.3, linestyle='--')
-
-        # Add statistical annotations
-        stats_text = (
-            f'Statistical Analysis:\n'
-            f'Mean: {np.mean(features):.4f}\n'
-            f'Std Dev: {np.std(features):.4f}\n'
-            f'Skewness: {stats.skew(features):.4f}\n'
-            f'Kurtosis: {stats.kurtosis(features):.4f}\n'
-            f'Max: {np.max(features):.4f}\n'
-            f'Min: {np.min(features):.4f}'
-        )
-        plt.annotate(stats_text, xy=(0.95, 0.95), xycoords='axes fraction',
-                    fontsize=10, ha='right', va='top',
-                    bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-
-        plt.tight_layout()
-        # Remove plt.show() from here
-        # plt.show()  # Comment out or remove this line
-
-        # Print detailed statistics
-        print("\nFeature Vector Analysis:")
-        print("-" * 30)
-        print(f"Vector Shape: {features.shape}")
-        print(f"Mean Value: {np.mean(features):.4f}")
-        print(f"Standard Deviation: {np.std(features):.4f}")
-        print(f"Skewness: {stats.skew(features):.4f}")
-        print(f"Kurtosis: {stats.kurtosis(features):.4f}")
-        print(f"Maximum Value: {np.max(features):.4f}")
-        print(f"Minimum Value: {np.min(features):.4f}")
-        print("-" * 30)
+    
 
 def uz():
     obj = practice()
