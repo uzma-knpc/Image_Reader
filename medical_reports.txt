@@ -1,84 +1,108 @@
 
-        ============================================================================
-                        NAME OF MEDICAL CENTRE, PAKISTAN
-                    (NMI- Artifical Inteligence Image Reader Report)
-        ============================================================================
-        Diagnosis          : Abnormal scan detected
+=============================================================================================
+                        🏥 MEDICAL IMAGING ANALYSIS REPORT
+                          AI-Assisted Image Analysis Report
+                          Atomic Energy Cancer Hospital, PAKISTAN
+=============================================================================================
 
-    Patient-Details:     :response:
-GenerateContentResponse(
-    done=True,
-    iterator=None,
-    result=protos.GenerateContentResponse({
-      "candidates": [
-        {
-          "content": {
-            "parts": [
-              {
-                "text": "I cannot provide patient details from the image.  The image is a medical scan (likely a nuclear medicine scan, possibly showing kidneys), but it contains no text providing identifying information such as patient name, PRN number, isotope used, or scan date.  The image itself only shows the scan results, not the accompanying patient data.  To obtain the patient details, you would need to refer to the accompanying medical record or report.\n"
-              }
-            ],
-            "role": "model"
-          },
-          "finish_reason": "STOP",
-          "avg_logprobs": -0.354511174288663
-        }
-      ],
-      "usage_metadata": {
-        "prompt_token_count": 346,
-        "candidates_token_count": 88,
-        "total_token_count": 434
-      },
-      "model_version": "gemini-1.5-flash"
-    }),
-)
-    ----------------------------------------------------------------------------
+📋 Report Details**
+- Report ID:--1
+- Scan Name:--002378_25fozia.jpg
+- Date:------ 2025-02-25 00:36:57
 
-
-        Clinical Feature:
-        ----------------------------------------------------------------------------
-        Mean Intensity     : 0.8935
-        Standard Deviation : 0.2039
-        Minimum Intensity  : 0.0000
-        Maximum Intensity  : 1.0000
-
-        Analysis:
-        ----------------------------------------------------------------------------
-        response:
-GenerateContentResponse(
-    done=True,
-    iterator=None,
-    result=protos.GenerateContentResponse({
-      "candidates": [
-        {
-          "content": {
-            "parts": [
-              {
-                "text": "I cannot provide specific medical advice or diagnoses.  I am an AI and do not have the expertise to interpret medical images like the one provided.  Analyzing medical images requires the training and experience of a qualified medical professional.\n\nTo get a proper diagnosis and advice, the image needs to be reviewed by a doctor or other qualified healthcare provider. They can interpret the scan, assess the findings, and provide appropriate medical advice based on the patient's complete medical history and physical examination.\n\n\nHowever, I can give you a *template* for the JSON output you requested,  assuming the image shows a nuclear medicine scan (likely a thyroid scan based on the shape and location) :\n\n```json\n{\n  \"DESCRIPTION\": \"The image appears to be a nuclear medicine scan, possibly a thyroid scan, showing two lobes of an organ (likely the thyroid). The upper image shows a relatively symmetrical uptake of the radiotracer in both lobes. The lower image shows a similar distribution but with some variations in intensity.  There are areas of increased uptake and areas of decreased uptake compared to the overall distribution in both the upper and lower images.  The background shows low intensity.\",\n  \"PREDICTION\": \"Further clinical information is needed to make a provisional or confirmed diagnosis.  Findings are suggestive of potential thyroid abnormalities, which require correlation with clinical data and possibly further testing.\",\n  \"ABNORMALITIES\": \"Variations in the intensity of the radiotracer uptake are observed in both lobes in both images. There are areas of potentially increased uptake suggestive of areas with higher metabolic activity, and areas of decreased uptake compared to average in both images which may signify functional abnormalities or areas of reduced metabolic activity. More information is needed to determine the clinical significance of these findings.\",\n  \"QUANTITATIVE_MEASUREMENTS\": [\n    {\n      \"parameter\": \"Organ size\",\n      \"value\": \"Cannot be determined from the image alone.\"\n    },\n    {\n      \"parameter\": \"Region of Interest\",\n      \"value\": \"Thyroid lobes (right and left)\"\n    },\n    {\n      \"parameter\": \"Intensity\",\n      \"value\": \"Variable; areas of increased and decreased uptake observed.  Precise quantitative values require image analysis software.\"\n    },\n    {\n      \"parameter\": \"Number of Nodules\",\n      \"value\": \"Cannot be definitively determined. Possible presence of areas of focal uptake.  Requires further investigation.\"\n    },\n    {\n      \"parameter\": \"Standard Uptake Value (SUV)\",\n      \"value\": \"Not available; image alone does not provide SUV values.\"\n    },\n    {\n      \"parameter\": \"Type of Radiolabeled Substance\",\n      \"value\": \"Unknown; requires additional information from the medical report.\"\n    }\n  ],\n  \"Organ_Features\": [\n    \"Two lobes\",\n    \"Variable intensity uptake\",\n    \"Areas of increased uptake\",\n    \"Areas of decreased uptake\",\n    \"Overall shape of thyroid is suggestive\" \n  ]\n}\n```\n\n**Disclaimer:**  This JSON is a *template* and should not be used for actual medical interpretation or decision-making.  Consult a healthcare professional for a proper diagnosis.\n"
-              }
-            ],
-            "role": "model"
-          },
-          "finish_reason": "STOP",
-          "avg_logprobs": -0.46397317422402873
-        }
-      ],
-      "usage_metadata": {
-        "prompt_token_count": 508,
-        "candidates_token_count": 666,
-        "total_token_count": 1174
-      },
-      "model_version": "gemini-1.5-flash"
-    }),
-)
+🔍 **DIAGNOSI**
+Uptake distribution appears normal. No significant abnormalities detected.
 
 
 
-        Report Generated by:
-        Doctor             : uzma
-        Date               : 2025-02-18 19:21:04
-        ============================================================================
-                                                        Head of the Establishment
-                                                        Consultant Nuclear Physician
-        
+👤 **PATIENT DETAILS**
+```json
+{
+  "Patient_Detail": [
+    "Name: FOZIA IMRAN",
+    "PRN-NO: 002378/25",
+    "Isotop: Tc99m",
+    "Scan Date: 2/21/2025",
+    "Scan Time: 10:01:39.0",
+    "Study Name: THYROID",
+    "Manufacturer Model: INFINIA",
+    "Hospital: Atomic Energy Medical Center",
+    "Department: Nuclear Medicine"
+  ]
+}
+```
+
+📊 **CLINICAL MEASUREMENTS**
+- Mean Intensity: 0.1819
+- Standard Deviation: 0.3685
+- Minimum Intensity: 0.0000
+- Maximum Intensity: 1.0000
+- Skewness: 1.5649
+- Kurtosis: 0.4940
+- Uptake Percentage: 0.1942
+
+📝 **ANALYSIS AND FINDINGS**
+```json
+{
+  "DESCRIPTION": "The image shows a thyroid scintigraphy scan.  The scan displays an anterior view of the thyroid gland.  The thyroid appears to have two lobes, with uptake of the radiotracer in each lobe.  The uptake appears somewhat asymmetrical, with potentially more intense uptake in one lobe than the other. The image quality is relatively good, showing distinct areas of uptake against a background of low activity.",
+  "PREDICTION": "Further evaluation is needed. The scan suggests possible asymmetry in thyroid uptake.  It is not possible to provide a definitive diagnosis based solely on this image. ",
+  "ABNORMALITIES": "Possible asymmetrical uptake of radiotracer in the thyroid lobes.  The degree of asymmetry and its clinical significance cannot be determined from this image alone.  Further investigation, such as comparison to previous scans or clinical correlation with patient symptoms and blood tests, is necessary.",
+  "QUANTITATIVE_MEASUREMENTS": [
+    {
+      "parameter": "Organ size",
+      "value": "Cannot be accurately determined from this image."
+    },
+    {
+      "parameter": "Region of Interest",
+      "value": "Thyroid gland"
+    },
+    {
+      "parameter": "Intensity",
+      "value": "Asymmetrical; higher in one lobe.  Precise quantitative values are unavailable without additional image processing."
+    },
+    {
+      "parameter": "Number of Nodules",
+      "value": "Cannot be definitively determined.  The image resolution is not sufficient to rule out subtle nodules. "
+    },
+    {
+      "parameter": "Standard Uptake Value (SUV)",
+      "value": "Not provided on the image."
+    },
+    {
+      "parameter": "Type of Radiolabeled substance",
+      "value": "Tc99m (Technetium-99m)"
+    },
+    {
+      "parameter": "Total counts",
+      "value": "146049"
+    },
+    {
+      "parameter": "Acquisition time",
+      "value": "121383 milliseconds"
+    },
+    {
+      "parameter": "Counts per second",
+      "value": "893"
+    }
+  ],
+  "Organ Features": [
+    "Two lobes",
+    "Asymmetrical uptake",
+    "Generally good image quality"
+  ]
+}
+```
+
+
+✅ **AUTHENTICATION**
+- Reporting Doctor:- uzma
+- Report Generated:*- 2025-02-25 00:36:57
+
+=============================================================================================
+
+                                                         Head of Department
+                                                        Consultant  Physician
+                                                    Atomic Energy Cancer Hospital,Pakistan
+=============================================================================================
+
 

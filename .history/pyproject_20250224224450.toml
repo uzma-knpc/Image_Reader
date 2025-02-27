@@ -26,7 +26,7 @@ imagereader = "imagereader.main:main"
 getfile = "imagereader.main:get_file_from_user"
 read = "imagereader.main:read"
 prac = "imagereader.prac:uz"
-
+streamlit_app = "imagereader.streamlit_app:main"
 gradio_app = "imagereader.gradio_app:main"
 feature = "imagereader.feature:main"
 feature2 = "imagereader.feature2:main"

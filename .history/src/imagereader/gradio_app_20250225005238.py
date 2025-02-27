@@ -76,6 +76,7 @@ def process_image(image, doctor_name):
     
     # Extract features and create feature plots
     tensor = obj.preprocess_image()
+    # Disable plot showing in extract_features
     plt.ioff()  # Turn off interactive mode
     features = obj.model(tensor).detach().numpy().flatten()
     fig_features = create_feature_plots(features)
@@ -101,8 +102,7 @@ def process_image(image, doctor_name):
         if plt.figure(fig_num) not in [fig_gray, fig_features]:
             plt.close(fig_num)
     
-    # Return the actual values instead of undefined variables
-    return reports[0], fig_gray, fig_features, report_path
+    return report_output, grayscale_output, features_output, save_path_output
 
 def save_report(report, save_path):
     """Save the report to the specified path"""

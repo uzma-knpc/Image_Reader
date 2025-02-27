@@ -255,16 +255,7 @@ class practice:
 - Skewness: {metrics["Skewness"]:.4f}
 - Kurtosis: {metrics["Kurtosis"]:.4f}
 - Uptake Percentage: {metrics["Uptake Percentage"]:.4f}
--------------------------------------------------------------------------------------------------------------
-***Standard Value
--mean_intensity > 0.5 and skewness > 0
- hyperfunctioning areas (hot spots)/
- potentially linked to hyperthyroidism/ bone metastases/renal obstruction. Further evaluation is recommended.\n\n"
--mean_intensity < 0.2 and skewness < 0
-"hypo-functioning areas (cold spots), which may indicate nodules
-renal dysfunction/ bone metastases". 
-"Uptake distribution appears normal. No significant abnormalities detected"
- -------------------------------------------------------------------------------------------------------------       
+
 📝 **ANALYSIS AND FINDINGS**
 {self.response_gen.text}
 
@@ -314,8 +305,7 @@ renal dysfunction/ bone metastases".
 
         # Add colorbar
         plt.tight_layout()
-        # Remove plt.show() from here
-        # plt.show()  # Comment out or remove this line
+        plt.show()
 
         return reports  # Return the generated reports list
     
@@ -357,8 +347,7 @@ renal dysfunction/ bone metastases".
                     bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
 
         plt.tight_layout()
-        # Remove plt.show() from here
-        # plt.show()  # Comment out or remove this line
+        plt.show()
 
         # Print detailed statistics
         print("\nFeature Vector Analysis:")

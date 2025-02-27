@@ -17,8 +17,6 @@ dependencies = [
     "torchvision",
     "gradio>=4.19.0",
     "rich>=13.9.4",
-    "scipy>=1.12.0",
-    "easyocr>=1.7.1"
 ]
 
 [project.scripts]
@@ -26,11 +24,10 @@ imagereader = "imagereader.main:main"
 getfile = "imagereader.main:get_file_from_user"
 read = "imagereader.main:read"
 prac = "imagereader.prac:uz"
-
+streamlit_app = "imagereader.streamlit_app:main"
 gradio_app = "imagereader.gradio_app:main"
 feature = "imagereader.feature:main"
 feature2 = "imagereader.feature2:main"
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

@@ -76,13 +76,8 @@ def process_image(image, doctor_name):
     
     # Extract features and create feature plots
     tensor = obj.preprocess_image()
-    plt.ioff()  # Turn off interactive mode
     features = obj.model(tensor).detach().numpy().flatten()
     fig_features = create_feature_plots(features)
-    plt.ion()  # Turn on interactive mode
-    
-    # Generate content using Gemini model
-    responses = obj.generate_content()
     
     # Generate report
     reports = obj.process_and_generate_reports(
@@ -96,13 +91,12 @@ def process_image(image, doctor_name):
     os.makedirs(downloads_path, exist_ok=True)
     report_path = os.path.join(downloads_path, f"medical_report_{doctor_name}.txt")
     
-    # Close all figures except the ones we want to return
-    for fig_num in plt.get_fignums():
-        if plt.figure(fig_num) not in [fig_gray, fig_features]:
-            plt.close(fig_num)
-    
-    # Return the actual values instead of undefined variables
-    return reports[0], fig_gray, fig_features, report_path
+    return {
+        "report": reports[0],
+        "grayscale": fig_gray,
+        "features": fig_features,
+        "save_path": report_path
+    }
 
 def save_report(report, save_path):
     """Save the report to the specified path"""

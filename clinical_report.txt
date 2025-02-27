@@ -1,0 +1,31 @@
+NUCLEAR MEDICINE SCAN REPORT
+============================
+
+Patient ID: 002378/25
+Patient Name: THYROID
+Isotope Used: Unknown
+Procedure: Unknown
+
+Clinical Analysis
+------------------------------
+Deep learning features extracted from nuclear imaging data. The extracted feature statistics help analyze uptake patterns.
+
+Procedure Details
+------------------------------
+The patient underwent Unknown with Unknown. Scans were processed using EfficientNet-B0, and feature vectors were extracted from the penultimate layer.
+
+Uptake Value
+------------------------------
+Mean Uptake: -0.0039
+Standard Deviation: 0.3121
+Skewness: 3.5791
+Kurtosis: 17.4044
+% Uptake: 50.00%
+
+Diagnosis
+------------------------------
+Uptake distribution appears normal. No significant abnormalities detected.
+
+Advice
+------------------------------
+Consult a nuclear medicine specialist to correlate findings with clinical history and additional imaging. Machine learning classification may further improve diagnostic accuracy.
