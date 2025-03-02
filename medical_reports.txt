@@ -1,108 +1,84 @@
 
-=============================================================================================
-                        🏥 MEDICAL IMAGING ANALYSIS REPORT
-                          AI-Assisted Image Analysis Report
-                          Atomic Energy Cancer Hospital, PAKISTAN
-=============================================================================================
+# �� MEDICAL IMAGING ANALYSIS REPORT
+## Atomic Energy Cancer Hospital(AECHs), PAKISTAN
+### AI-Assisted Image Analysis Report
 
-📋 Report Details**
-- Report ID:--1
-- Scan Name:--002378_25fozia.jpg
-- Date:------ 2025-02-25 00:36:57
+---
 
-🔍 **DIAGNOSI**
-Uptake distribution appears normal. No significant abnormalities detected.
-
-
-
-👤 **PATIENT DETAILS**
-```json
-{
-  "Patient_Detail": [
-    "Name: FOZIA IMRAN",
-    "PRN-NO: 002378/25",
-    "Isotop: Tc99m",
-    "Scan Date: 2/21/2025",
-    "Scan Time: 10:01:39.0",
-    "Study Name: THYROID",
-    "Manufacturer Model: INFINIA",
-    "Hospital: Atomic Energy Medical Center",
-    "Department: Nuclear Medicine"
-  ]
-}
-```
-
-📊 **CLINICAL MEASUREMENTS**
-- Mean Intensity: 0.1819
-- Standard Deviation: 0.3685
-- Minimum Intensity: 0.0000
-- Maximum Intensity: 1.0000
-- Skewness: 1.5649
-- Kurtosis: 0.4940
-- Uptake Percentage: 0.1942
-
-📝 **ANALYSIS AND FINDINGS**
-```json
-{
-  "DESCRIPTION": "The image shows a thyroid scintigraphy scan.  The scan displays an anterior view of the thyroid gland.  The thyroid appears to have two lobes, with uptake of the radiotracer in each lobe.  The uptake appears somewhat asymmetrical, with potentially more intense uptake in one lobe than the other. The image quality is relatively good, showing distinct areas of uptake against a background of low activity.",
-  "PREDICTION": "Further evaluation is needed. The scan suggests possible asymmetry in thyroid uptake.  It is not possible to provide a definitive diagnosis based solely on this image. ",
-  "ABNORMALITIES": "Possible asymmetrical uptake of radiotracer in the thyroid lobes.  The degree of asymmetry and its clinical significance cannot be determined from this image alone.  Further investigation, such as comparison to previous scans or clinical correlation with patient symptoms and blood tests, is necessary.",
-  "QUANTITATIVE_MEASUREMENTS": [
-    {
-      "parameter": "Organ size",
-      "value": "Cannot be accurately determined from this image."
-    },
-    {
-      "parameter": "Region of Interest",
-      "value": "Thyroid gland"
-    },
-    {
-      "parameter": "Intensity",
-      "value": "Asymmetrical; higher in one lobe.  Precise quantitative values are unavailable without additional image processing."
-    },
-    {
-      "parameter": "Number of Nodules",
-      "value": "Cannot be definitively determined.  The image resolution is not sufficient to rule out subtle nodules. "
-    },
-    {
-      "parameter": "Standard Uptake Value (SUV)",
-      "value": "Not provided on the image."
-    },
-    {
-      "parameter": "Type of Radiolabeled substance",
-      "value": "Tc99m (Technetium-99m)"
-    },
-    {
-      "parameter": "Total counts",
-      "value": "146049"
-    },
-    {
-      "parameter": "Acquisition time",
-      "value": "121383 milliseconds"
-    },
-    {
-      "parameter": "Counts per second",
-      "value": "893"
-    }
-  ],
-  "Organ Features": [
-    "Two lobes",
-    "Asymmetrical uptake",
-    "Generally good image quality"
-  ]
-}
-```
+📋 PATIENT INFORMATION
+-------------------
+• Name: 001003/25
+• Patient ID: Thyroid
+• Age/Sex: Not Found
+• Study Date: Date
+• Isotope Used: Not Found
+• Count Rate: Not Found
+• Administered Activity: Not Found
+• Calculated Uptake: Not Available
 
 
-✅ **AUTHENTICATION**
-- Reporting Doctor:- uzma
-- Report Generated:*- 2025-02-25 00:36:57
+🔍 DETAILED NUCLEAR SCAN ANALYSIS
+===============================
 
-=============================================================================================
+📊 UPTAKE PATTERN ANALYSIS
+-------------------------
+1. Distribution Pattern:
+   ➤ MIXED UPTAKE PATTERN
+   - Kurtosis Value: 1.6934
+   - Shows normal distribution pattern
 
-                                                         Head of Department
-                                                        Consultant  Physician
-                                                    Atomic Energy Cancer Hospital,Pakistan
-=============================================================================================
+2. Uptake Intensity:
+   ➤ NORMAL UPTAKE INTENSITY
+   - Mean Activity: 0.3305
+   - Skewness: 0.8308
+   - Normal tracer distribution observed
+
+3. Regional Distribution:
+   - Symmetry: Asymmetric (Right dominant)
+   - Variability: Low (STD: 0.1163)
+
+🎯 CLINICAL INTERPRETATION
+------------------------
+Primary Finding: Normal scan pattern - No significant abnormalities
+
+⚠️ SIGNIFICANT FINDINGS
+---------------------
+• No significant hot or cold spots detected
+
+• Asymmetric uptake with 0.83 skewness
+
+
+
+📋 RECOMMENDATIONS
+----------------
+1. Monitor diffuse uptake pattern
+
+2. No additional imaging required at this time
+
+3. Clinical correlation advised with:
+   - Laboratory findings
+   - Patient symptoms
+   - Prior imaging studies
+
+📈 TECHNICAL PARAMETERS
+--------------------
+• Uptake Percentage: 24.8%
+• Feature Variation: 0.1163
+• Distribution Shape: Leptokurtic (Peaked)
+• Confidence Level: High
+
+
+✅ AUTHENTICATION
+--------------
+• Reporting Doctor: Duty Doctor
+• Report Generated: 2025-02-27 19:26:10
+• Scan ID: 1
+• Image Name: 001003_25.jpg
+
+---
+
+                                                    Head of Department
+                                                    Consultant Nuclear Physician
+                                                    Atomic Energy Cancer Hospital
 
 

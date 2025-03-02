@@ -18,7 +18,6 @@ from PIL import Image
 from transformers import pipeline
 from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 from scipy import stats  # Add this import
-from easyocr import Reader
 
 from dotenv import load_dotenv
 
@@ -35,13 +34,13 @@ class practice:
         # Initialize model
         self.model = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.DEFAULT)
         self.model.eval()
-        self.normalized_img = None
-        self.image_path = None
         
         # Save model to models directory
         model_path = os.path.join("models", "fine_tuned_inception_resnet_v1.pth")
         torch.save(self.model.state_dict(), model_path)
         
+        self.image_path = None
+
         # Add prompt1 for patient details
         self.prompt1 = """This image contains a human organ image along with notes and graph.
     Given the Medical image, extract the following patient details:
@@ -66,8 +65,6 @@ class practice:
         self.model_gen = genai.GenerativeModel("gemini-1.5-flash")
         # Remove ONNX initialization
         # self.session = ort.InferenceSession("model.onnx", providers=['CPUExecutionProvider'])
-
-        self.feature_stats = None  # Add this to store feature statistics
 
     def get_file_from_user(self):
         """
@@ -139,38 +136,23 @@ class practice:
 
     # Function to Extract Features
     def extract_features(self, tensor=None):
-        """Extract and normalize features with proper scaling"""
+        """Extract features with proper scaling"""
         if tensor is None:
             tensor = self.preprocess_image()
         
         with torch.no_grad():
-            # Get features from the model
             features = self.model(tensor)
+            # Convert to numpy and scale to [0,1] range
             features_np = features.numpy().flatten()
+            features_np = (features_np - features_np.min()) / (features_np.max() - features_np.min())
             
-            # Normalize features to 0-1 range before analysis
-            normalized_features = (features_np - features_np.min()) / (features_np.max() - features_np.min())
+            print("\nFeature Statistics (After Scaling):")
+            print(f"Mean: {np.mean(features_np):.4f}")
+            print(f"Std Dev: {np.std(features_np):.4f}")
+            print(f"Min: {np.min(features_np):.4f}")
+            print(f"Max: {np.max(features_np):.4f}")
             
-            # Store normalized feature values for reporting
-            self.feature_stats = {
-                'raw_mean': np.mean(normalized_features),  # Now will be 0-1
-                'raw_std': np.std(normalized_features),
-                'raw_skewness': stats.skew(normalized_features),
-                'raw_kurtosis': stats.kurtosis(normalized_features),
-                'raw_min': np.min(normalized_features),
-                'raw_max': np.max(normalized_features)
-            }
-            
-            # Print normalized statistics
-            print("\nNormalized Feature Statistics:")
-            print(f"Mean: {self.feature_stats['raw_mean']:.4f}")  # Should be positive now
-            print(f"Std Dev: {self.feature_stats['raw_std']:.4f}")
-            print(f"Skewness: {self.feature_stats['raw_skewness']:.4f}")
-            print(f"Kurtosis: {self.feature_stats['raw_kurtosis']:.4f}")
-            print(f"Min: {self.feature_stats['raw_min']:.4f}")  # Will be 0
-            print(f"Max: {self.feature_stats['raw_max']:.4f}")  # Will be 1
-            
-            return normalized_features  # Return normalized features
+            return features_np
 
     # Function to create image embeddings
     def create_image_embedding(self, image_path=None):
@@ -201,55 +183,107 @@ class practice:
 
     # Function to normalize the image intensity
     def normalize_image(self, img):
-        """Normalize image to 0-1 range"""
-        if img is None:
-            return None
-        # Ensure float type
-        img = img.astype(float)
-        # Min-max normalization
-        if img.max() - img.min() != 0:
-            normalized = (img - img.min()) / (img.max() - img.min())
-        else:
-            normalized = img
-        self.normalized_img = normalized  # Store normalized image
-        return normalized
-
+        img_min, img_max = img.min(), img.max()
+        normalized_img = (img - img_min) / (img_max - img_min)
+        return normalized_img
     # Diagnostic function with criteria
     def diagnose_image(self, img, features):
-        """Diagnose using normalized features"""
-        # Image metrics (already 0-1)
+        """Diagnose using properly scaled features"""
+        # Image metrics
         mean_intensity = np.mean(img)
         std_intensity = np.std(img)
         uptake_percentage = np.sum(img > 0.5) / img.size
         
-        # Feature metrics (now also 0-1)
-        feature_mean = self.feature_stats['raw_mean']  # Will be positive
-        feature_std = self.feature_stats['raw_std']
-        feature_kurtosis = self.feature_stats['raw_kurtosis']
-        feature_skewness = self.feature_stats['raw_skewness']
+        # Feature metrics with proper scaling
+        feature_mean = np.mean(features)  # Should now be between 0 and 1
+        feature_std = np.std(features)
+        feature_kurtosis = stats.kurtosis(features)
+        feature_skewness = stats.skew(features)
         
-        # Store all normalized metrics
+        # Store metrics
         self.diagnosis_metrics = {
             "Mean Intensity": mean_intensity,
             "Standard Deviation": std_intensity,
             "Uptake Percentage": uptake_percentage,
-            "Feature Mean": feature_mean,  # Now positive
+            "Feature Mean": feature_mean,
             "Feature Std": feature_std,
             "Feature Kurtosis": feature_kurtosis,
             "Feature Skewness": feature_skewness
         }
         
-        # Print diagnostic metrics for verification
-        print("\nDiagnostic Metrics (All Normalized):")
+        # Print diagnostics
+        print("\nDiagnostic Metrics:")
         print(f"Image Mean Intensity: {mean_intensity:.4f}")
-        print(f"Feature Mean: {feature_mean:.4f}")  # Should match
+        print(f"Feature Mean: {feature_mean:.4f}")
         print(f"Feature Kurtosis: {feature_kurtosis:.4f}")
         print(f"Feature Skewness: {feature_skewness:.4f}")
         
-        # Update thresholds for normalized values
-        if feature_mean > 0.6 and feature_kurtosis > 2.0:
+        # Determine status strings
+        mean_status = "High (Hyperactive)" if feature_mean > 0.6 else "Low (Hypoactive)" if feature_mean < 0.3 else "Normal"
+        kurtosis_status = "High (Focal)" if feature_kurtosis > 2.0 else "Low (Diffuse)" if feature_kurtosis < -1.0 else "Normal"
+        skewness_status = "Positive (Hot Spots)" if feature_skewness > 0.5 else "Negative (Cold Spots)" if feature_skewness < -0.5 else "Normal"
+        std_status = "High Variability" if feature_std > 0.25 else "Low Variability" if feature_std < 0.15 else "Normal"
+        
+        # Update prompt with actual values
+        self.prompt = f"""This image contains a human organ image along with notes and graph.
+    Analyze the image based on these measured feature values and their clinical implications:
+
+    MEASURED FEATURE VALUES:
+    1. Feature Mean: {feature_mean:.4f}
+       - Normal Range: 0.3 to 0.6
+       - Current Status: {mean_status}
+    
+    2. Feature Kurtosis: {feature_kurtosis:.4f}
+       - Normal Range: -2.0 to 2.0
+       - Current Status: {kurtosis_status}
+    
+    3. Feature Skewness: {feature_skewness:.4f}
+       - Normal Range: -0.5 to 0.5
+       - Current Status: {skewness_status}
+    
+    4. Feature Standard Deviation: {feature_std:.4f}
+       - Normal Range: 0.15 to 0.25
+       - Current Status: {std_status}
+
+    Based on these specific values, provide:
+
+    DESCRIPTION: {{
+        "Organ_Type": "Describe the organ visible in image",
+        "Pattern_Analysis": "Analyze uptake pattern based on measured feature mean {feature_mean:.4f}",
+        "Distribution_Type": "Determine if uptake is focal or diffuse based on kurtosis {feature_kurtosis:.4f}",
+        "Key_Features": "List features based on measured values"
+    }}
+
+    PREDICTION: {{
+        "Primary_Condition": "Determine condition based on feature values",
+        "Confidence_Level": "Assess based on feature clarity",
+        "Supporting_Evidence": "Use measured feature values as evidence"
+    }}
+
+    ABNORMALITIES: {{
+        "Hot_Spots": "Analyze regions with high feature values",
+        "Cold_Spots": "Analyze regions with low feature values",
+        "Pattern_Irregularities": "Identify based on feature distribution"
+    }}
+
+    QUANTITATIVE MEASUREMENTS: {{
+        "Feature_Statistics": {{
+            "Mean_Value": "{feature_mean:.4f} - {mean_status}",
+            "Kurtosis": "{feature_kurtosis:.4f} - {kurtosis_status}",
+            "Skewness": "{feature_skewness:.4f} - {skewness_status}",
+            "Standard_Deviation": "{feature_std:.4f} - {std_status}"
+        }},
+        "Clinical_Significance": "Interpret these specific values in clinical context",
+        "Comparison_To_Normal": "Compare measured values to normal ranges provided"
+    }}
+
+    Return a detailed analysis focusing on these specific measured values and their clinical implications.
+    """
+        
+        # Return diagnosis based on feature values
+        if (feature_mean > 0.6 and feature_kurtosis > 2.0):
             return "HIGH UPTAKE DETECTED\n- Feature analysis indicates significant abnormal patterns..."
-        elif feature_mean < 0.3 and feature_kurtosis < -1.0:
+        elif (feature_mean < 0.3 and feature_kurtosis < -1.0):
             return "LOW UPTAKE DETECTED\n- Feature analysis shows abnormal low-activity patterns..."
         else:
             return "NORMAL SCAN PATTERN\n- Feature analysis shows normal distribution..."
@@ -384,212 +418,120 @@ Based on feature analysis:
             return None
 
     def interpret_features(self, features, img):
-        """Interpret features using consistent values"""
-        # Use the stored raw feature statistics
-        feature_mean = self.feature_stats['raw_mean']
-        feature_std = self.feature_stats['raw_std']
-        feature_kurtosis = self.feature_stats['raw_kurtosis']
-        feature_skewness = self.feature_stats['raw_skewness']
+        """Interpret features directly using EfficientNet-B0 outputs"""
+        # Calculate metrics
+        feature_mean = np.mean(features)
+        feature_std = np.std(features)
+        feature_kurtosis = stats.kurtosis(features)
+        feature_skewness = stats.skew(features)
         uptake_percentage = np.sum(img > 0.5) / img.size
 
-        analysis = f"""
-🔍 DETAILED NUCLEAR SCAN ANALYSIS
-===============================
+        # Define interpretation thresholds
+        interpretation = {
+            "Pattern_Type": "",
+            "Distribution": "",
+            "Severity": "",
+            "Confidence": "",
+            "Recommendations": []
+        }
 
-📊 STATISTICAL MEASUREMENTS
-------------------------
-• Mean Value: {feature_mean:.4f}
-• Standard Deviation: {feature_std:.4f}
-• Kurtosis: {feature_kurtosis:.4f}
-• Skewness: {feature_skewness:.4f}
-• Uptake Percentage: {uptake_percentage:.1%}
+        # Pattern Analysis based on Kurtosis and Standard Deviation
+        if feature_kurtosis > 2.0:
+            interpretation["Pattern_Type"] = "FOCAL PATTERN"
+            if feature_mean > 0.6:
+                interpretation["Distribution"] = "Intense focal uptake regions"
+                interpretation["Recommendations"].append("- Investigate focal hot spots for potential hyperactivity")
+            else:
+                interpretation["Distribution"] = "Focal cold regions"
+                interpretation["Recommendations"].append("- Examine focal cold areas for potential abnormalities")
+        elif feature_kurtosis < -1.0:
+            interpretation["Pattern_Type"] = "DIFFUSE PATTERN"
+            if feature_mean > 0.5:
+                interpretation["Distribution"] = "Diffuse increased uptake"
+                interpretation["Recommendations"].append("- Evaluate for systemic conditions")
+            else:
+                interpretation["Distribution"] = "Diffuse decreased uptake"
+                interpretation["Recommendations"].append("- Consider systemic hypofunction")
 
-📊 UPTAKE PATTERN ANALYSIS
--------------------------
-1. Distribution Pattern:
-   {'➤ FOCAL UPTAKE PATTERN' if feature_kurtosis > 2.0 else
-    '➤ DIFFUSE UPTAKE PATTERN' if feature_kurtosis < -1.0 else
-    '➤ MIXED UPTAKE PATTERN'}
-   - Kurtosis Value: {feature_kurtosis:.4f}
-   - {'Indicates concentrated uptake in specific regions' if feature_kurtosis > 2.0 else
-      'Suggests widespread, uniform distribution' if feature_kurtosis < -1.0 else
-      'Shows normal distribution pattern'}
+        # Severity Assessment based on Feature Mean and Skewness
+        if feature_mean > 0.7:
+            interpretation["Severity"] = "SEVERE HYPERACTIVITY"
+            interpretation["Recommendations"].append("- Urgent clinical correlation recommended")
+        elif feature_mean < 0.3:
+            interpretation["Severity"] = "SIGNIFICANT HYPOACTIVITY"
+            interpretation["Recommendations"].append("- Further investigation needed for reduced function")
+        else:
+            interpretation["Severity"] = "MODERATE"
+            interpretation["Recommendations"].append("- Regular follow-up advised")
 
-2. Uptake Intensity:
-   {'➤ HOT SPOTS DETECTED' if feature_mean > 0.6 and feature_skewness > 0.5 else
-    '➤ COLD SPOTS DETECTED' if feature_mean < 0.3 and feature_skewness < -0.5 else
-    '➤ NORMAL UPTAKE INTENSITY'}
-   - Mean Activity: {feature_mean:.4f}
-   - Skewness: {feature_skewness:.4f}
-   - {'Areas of increased tracer accumulation present' if feature_mean > 0.6 else
-      'Areas of decreased tracer uptake identified' if feature_mean < 0.3 else
-      'Normal tracer distribution observed'}
+        # Confidence based on Feature STD
+        if feature_std < 0.15:
+            interpretation["Confidence"] = "HIGH CONFIDENCE"
+        elif feature_std < 0.25:
+            interpretation["Confidence"] = "MODERATE CONFIDENCE"
+        else:
+            interpretation["Confidence"] = "LOW CONFIDENCE - Additional views recommended"
 
-3. Regional Distribution:
-   - Symmetry: {'Asymmetric (Right dominant)' if feature_skewness > 0.5 else
-                'Asymmetric (Left dominant)' if feature_skewness < -0.5 else
-                'Symmetric distribution'}
-   - Variability: {'High' if feature_std > 0.25 else
-                   'Low' if feature_std < 0.15 else
-                   'Normal'} (STD: {feature_std:.4f})
+        # Generate detailed report
+        detailed_analysis = f"""
+🔬 QUANTITATIVE ANALYSIS
+=======================
 
-🎯 CLINICAL INTERPRETATION
-------------------------
-Primary Finding: {
-    'Hyperactive regions with focal uptake - Suggestive of active pathology' 
-        if feature_mean > 0.6 and feature_kurtosis > 2.0 else
-    'Hypoactive regions with focal defects - Possible perfusion deficits' 
-        if feature_mean < 0.3 and feature_kurtosis > 2.0 else
-    'Diffuse hyperactivity - Consider systemic condition' 
-        if feature_mean > 0.6 and feature_kurtosis < -1.0 else
-    'Diffuse hypoactivity - Possible global dysfunction' 
-        if feature_mean < 0.3 and feature_kurtosis < -1.0 else
-    'Normal scan pattern - No significant abnormalities'
-}
+📊 Feature Metrics:
+-----------------
+• Mean Activity: {feature_mean:.4f} 
+  → {interpretation["Severity"]}
 
-⚠️ SIGNIFICANT FINDINGS
----------------------
-{f"• Hot spots detected in {'focal' if feature_kurtosis > 2.0 else 'diffuse'} pattern" 
-    if feature_mean > 0.6 else
- f"• Cold spots detected in {'focal' if feature_kurtosis > 2.0 else 'diffuse'} pattern" 
-    if feature_mean < 0.3 else
- "• No significant hot or cold spots detected"}
+• Pattern Distribution (Kurtosis): {feature_kurtosis:.4f}
+  → {interpretation["Pattern_Type"]}
 
-{f"• Asymmetric uptake with {abs(feature_skewness):.2f} skewness" 
-    if abs(feature_skewness) > 0.5 else
- "• Symmetric uptake distribution"}
+• Asymmetry (Skewness): {feature_skewness:.4f}
+  → {'Right-sided dominance' if feature_skewness > 0 else 'Left-sided dominance' if feature_skewness < 0 else 'Symmetric'}
 
-{f"• High variability in uptake (STD: {feature_std:.4f})" 
-    if feature_std > 0.25 else ""}
+• Variability (Std Dev): {feature_std:.4f}
+  → {interpretation["Confidence"]}
 
-📋 RECOMMENDATIONS
+🎯 INTERPRETATION
+---------------
+• Pattern: {interpretation["Pattern_Type"]}
+• Distribution: {interpretation["Distribution"]}
+• Severity: {interpretation["Severity"]}
+• Confidence: {interpretation["Confidence"]}
+
+⚠️ RECOMMENDATIONS
 ----------------
-1. {
-    'Correlate focal hot spots with anatomical imaging' 
-        if feature_mean > 0.6 and feature_kurtosis > 2.0 else
-    'Evaluate focal cold spots with additional imaging' 
-        if feature_mean < 0.3 and feature_kurtosis > 2.0 else
-    'Monitor diffuse uptake pattern' 
-        if abs(feature_kurtosis) < 2.0 else
-    'Regular follow-up recommended'
-}
+{chr(10).join(interpretation["Recommendations"])}
 
-2. {
-    'Consider SPECT/CT for anatomical correlation' 
-        if feature_kurtosis > 2.0 else
-    'Consider blood pool imaging' 
-        if feature_kurtosis < -1.0 else
-    'No additional imaging required at this time'
-}
-
-3. Clinical correlation advised with:
-   - Laboratory findings
-   - Patient symptoms
-   - Prior imaging studies
-
-📈 TECHNICAL PARAMETERS
---------------------
+📈 TECHNICAL METRICS
+------------------
 • Uptake Percentage: {uptake_percentage:.1%}
 • Feature Variation: {feature_std:.4f}
-• Distribution Shape: {'Leptokurtic (Peaked)' if feature_kurtosis > 0 else 'Platykurtic (Flat)'}
-• Confidence Level: {'High' if feature_std < 0.15 else 'Moderate' if feature_std < 0.25 else 'Further views recommended'}
+• Distribution Shape: {'Peaked' if feature_kurtosis > 0 else 'Flat'}
 """
-        return analysis
-
-    def extract_patient_details(self, img):
-        """Extract patient details using OCR"""
-        try:
-            # Initialize OCR reader
-            reader = Reader(['en'])
-            
-            # Convert numpy array to PIL Image
-            img_pil = Image.fromarray((img * 255).astype(np.uint8))
-            
-            # Read text from image
-            results = reader.readtext(np.array(img_pil))
-            
-            # Initialize patient details
-            patient_details = {
-                "Name": "Not Found",
-                "Patient ID": "Not Found",
-                "Age/Sex": "Not Found",
-                "Study Date": "Not Found",
-                "Isotope": "Not Found",
-                "Count Rate": "Not Found",
-                "Administered Activity": "Not Found"
-            }
-            
-            # Extract information from OCR results
-            for detection in results:
-                text = detection[1].lower()
-                if "name" in text or "patient" in text:
-                    patient_details["Name"] = detection[1].split(":")[-1].strip()
-                elif "id" in text or "prn" in text:
-                    patient_details["Patient ID"] = detection[1].split(":")[-1].strip()
-                elif "age" in text or "sex" in text:
-                    patient_details["Age/Sex"] = detection[1].split(":")[-1].strip()
-                elif "date" in text:
-                    patient_details["Study Date"] = detection[1].split(":")[-1].strip()
-                elif "isotope" in text or "tc-99m" in text:
-                    patient_details["Isotope"] = detection[1].strip()
-                elif "count" in text or "kcnt" in text or "cnt/sec" in text:
-                    patient_details["Count Rate"] = detection[1].strip()
-                elif "mci" in text or "activity" in text:
-                    patient_details["Administered Activity"] = detection[1].strip()
-            
-            # Calculate uptake value if count rate and administered activity are available
-            if patient_details["Count Rate"] != "Not Found" and patient_details["Administered Activity"] != "Not Found":
-                try:
-                    # Extract numeric values
-                    count_rate = float(''.join(filter(str.isdigit, patient_details["Count Rate"])))
-                    activity = float(''.join(filter(str.isdigit, patient_details["Administered Activity"])))
-                    
-                    # Calculate uptake percentage (simplified formula)
-                    uptake_value = (count_rate / activity) * 100
-                    patient_details["Uptake Value"] = f"{uptake_value:.2f}%"
-                except:
-                    patient_details["Uptake Value"] = "Could not calculate"
-            
-            return patient_details
-        
-        except Exception as e:
-            print(f"Error extracting patient details: {e}")
-            return None
+        return detailed_analysis
 
     def generate_report(self, scan_id, scan_name, diagnosis, features, doctor_name):
-        """Generate report with patient details and uptake values"""
-        # Get feature analysis
+        """Generate report using direct feature interpretation"""
+        # Get direct interpretation from features
         analysis = self.interpret_features(features, self.normalized_img)
         
-        # Extract patient details
-        patient_details = self.extract_patient_details(self.normalized_img)
-        
         report = f"""
-# �� MEDICAL IMAGING ANALYSIS REPORT
+# 🏥 MEDICAL IMAGING ANALYSIS REPORT
 ## Atomic Energy Cancer Hospital, PAKISTAN
 ### AI-Assisted Image Analysis Report
 
 ---
 
-📋 PATIENT INFORMATION
--------------------
-• Name: {patient_details["Name"]}
-• Patient ID: {patient_details["Patient ID"]}
-• Age/Sex: {patient_details["Age/Sex"]}
-• Study Date: {patient_details["Study Date"]}
-• Isotope Used: {patient_details["Isotope"]}
-• Count Rate: {patient_details["Count Rate"]}
-• Administered Activity: {patient_details["Administered Activity"]}
-• Calculated Uptake: {patient_details.get("Uptake Value", "Not Available")}
+📋 **Report Details**
+- **Report ID:** {scan_id}
+- **Scan Name:** {scan_name}
+- **Date:** {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 {analysis}
 
-✅ AUTHENTICATION
---------------
-• Reporting Doctor: {doctor_name}
-• Report Generated: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-• Scan ID: {scan_id}
-• Image Name: {scan_name}
+✅ **Authentication**
+- **Reporting Doctor:** {doctor_name}
+- **Report Generated:** {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 ---
 
@@ -612,14 +554,23 @@ Primary Finding: {
 
             # Load and process image
             img = self.load_image(file_path)
-            self.normalized_img = self.normalize_image(img)  # Store normalized image
+            normalized_img = self.normalize_image(img)
             
             # Extract features
             tensor = self.preprocess_image()
-            features = self.extract_features(tensor)  # This will return normalized features
+            features = self.model(tensor).detach().numpy().flatten()
             
-            # Generate diagnosis
-            diagnosis = self.diagnose_image(self.normalized_img, features)
+            # Generate diagnosis and content
+            diagnosis = self.diagnose_image(normalized_img, features)
+            
+            # Generate content first
+            try:
+                self.generate_content()
+            except Exception as e:
+                print(f"Error generating content: {e}")
+                # Create dummy response objects
+                self.response_gen = type('Response', (), {'text': 'Error generating analysis'})()
+                self.response_gen1 = type('Response', (), {'text': 'Error extracting patient details'})()
             
             # Generate report
             scan_id = i + 1
@@ -628,7 +579,7 @@ Primary Finding: {
 
             # Display image with diagnosis
             ax = axes[i]
-            im = ax.imshow(self.normalized_img, cmap="gray")
+            im = ax.imshow(normalized_img, cmap="gray")
             ax.set_title(f"{title}\n{diagnosis}", fontsize=10)
             ax.axis("off")
 

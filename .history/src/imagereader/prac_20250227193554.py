@@ -139,7 +139,7 @@ class practice:
 
     # Function to Extract Features
     def extract_features(self, tensor=None):
-        """Extract and normalize features with proper scaling"""
+        """Extract and normalize features consistently"""
         if tensor is None:
             tensor = self.preprocess_image()
         
@@ -148,29 +148,26 @@ class practice:
             features = self.model(tensor)
             features_np = features.numpy().flatten()
             
-            # Normalize features to 0-1 range before analysis
-            normalized_features = (features_np - features_np.min()) / (features_np.max() - features_np.min())
-            
-            # Store normalized feature values for reporting
+            # Store raw feature values for reporting
             self.feature_stats = {
-                'raw_mean': np.mean(normalized_features),  # Now will be 0-1
-                'raw_std': np.std(normalized_features),
-                'raw_skewness': stats.skew(normalized_features),
-                'raw_kurtosis': stats.kurtosis(normalized_features),
-                'raw_min': np.min(normalized_features),
-                'raw_max': np.max(normalized_features)
+                'raw_mean': np.mean(features_np),
+                'raw_std': np.std(features_np),
+                'raw_skewness': stats.skew(features_np),
+                'raw_kurtosis': stats.kurtosis(features_np),
+                'raw_min': np.min(features_np),
+                'raw_max': np.max(features_np)
             }
             
-            # Print normalized statistics
-            print("\nNormalized Feature Statistics:")
-            print(f"Mean: {self.feature_stats['raw_mean']:.4f}")  # Should be positive now
+            # Print raw statistics
+            print("\nRaw Feature Statistics:")
+            print(f"Mean: {self.feature_stats['raw_mean']:.4f}")
             print(f"Std Dev: {self.feature_stats['raw_std']:.4f}")
             print(f"Skewness: {self.feature_stats['raw_skewness']:.4f}")
             print(f"Kurtosis: {self.feature_stats['raw_kurtosis']:.4f}")
-            print(f"Min: {self.feature_stats['raw_min']:.4f}")  # Will be 0
-            print(f"Max: {self.feature_stats['raw_max']:.4f}")  # Will be 1
+            print(f"Min: {self.feature_stats['raw_min']:.4f}")
+            print(f"Max: {self.feature_stats['raw_max']:.4f}")
             
-            return normalized_features  # Return normalized features
+            return features_np
 
     # Function to create image embeddings
     def create_image_embedding(self, image_path=None):
@@ -216,40 +213,102 @@ class practice:
 
     # Diagnostic function with criteria
     def diagnose_image(self, img, features):
-        """Diagnose using normalized features"""
-        # Image metrics (already 0-1)
+        """Diagnose using properly scaled features"""
+        # Image metrics
         mean_intensity = np.mean(img)
         std_intensity = np.std(img)
         uptake_percentage = np.sum(img > 0.5) / img.size
         
-        # Feature metrics (now also 0-1)
-        feature_mean = self.feature_stats['raw_mean']  # Will be positive
-        feature_std = self.feature_stats['raw_std']
-        feature_kurtosis = self.feature_stats['raw_kurtosis']
-        feature_skewness = self.feature_stats['raw_skewness']
+        # Feature metrics with proper scaling
+        feature_mean = np.mean(features)  # Should now be between 0 and 1
+        feature_std = np.std(features)
+        feature_kurtosis = stats.kurtosis(features)
+        feature_skewness = stats.skew(features)
         
-        # Store all normalized metrics
+        # Store metrics
         self.diagnosis_metrics = {
             "Mean Intensity": mean_intensity,
             "Standard Deviation": std_intensity,
             "Uptake Percentage": uptake_percentage,
-            "Feature Mean": feature_mean,  # Now positive
+            "Feature Mean": feature_mean,
             "Feature Std": feature_std,
             "Feature Kurtosis": feature_kurtosis,
             "Feature Skewness": feature_skewness
         }
         
-        # Print diagnostic metrics for verification
-        print("\nDiagnostic Metrics (All Normalized):")
+        # Print diagnostics
+        print("\nDiagnostic Metrics:")
         print(f"Image Mean Intensity: {mean_intensity:.4f}")
-        print(f"Feature Mean: {feature_mean:.4f}")  # Should match
+        print(f"Feature Mean: {feature_mean:.4f}")
         print(f"Feature Kurtosis: {feature_kurtosis:.4f}")
         print(f"Feature Skewness: {feature_skewness:.4f}")
         
-        # Update thresholds for normalized values
-        if feature_mean > 0.6 and feature_kurtosis > 2.0:
+        # Determine status strings
+        mean_status = "High (Hyperactive)" if feature_mean > 0.6 else "Low (Hypoactive)" if feature_mean < 0.3 else "Normal"
+        kurtosis_status = "High (Focal)" if feature_kurtosis > 2.0 else "Low (Diffuse)" if feature_kurtosis < -1.0 else "Normal"
+        skewness_status = "Positive (Hot Spots)" if feature_skewness > 0.5 else "Negative (Cold Spots)" if feature_skewness < -0.5 else "Normal"
+        std_status = "High Variability" if feature_std > 0.25 else "Low Variability" if feature_std < 0.15 else "Normal"
+        
+        # Update prompt with actual values
+        self.prompt = f"""This image contains a human organ image along with notes and graph.
+    Analyze the image based on these measured feature values and their clinical implications:
+
+    MEASURED FEATURE VALUES:
+    1. Feature Mean: {feature_mean:.4f}
+       - Normal Range: 0.3 to 0.6
+       - Current Status: {mean_status}
+    
+    2. Feature Kurtosis: {feature_kurtosis:.4f}
+       - Normal Range: -2.0 to 2.0
+       - Current Status: {kurtosis_status}
+    
+    3. Feature Skewness: {feature_skewness:.4f}
+       - Normal Range: -0.5 to 0.5
+       - Current Status: {skewness_status}
+    
+    4. Feature Standard Deviation: {feature_std:.4f}
+       - Normal Range: 0.15 to 0.25
+       - Current Status: {std_status}
+
+    Based on these specific values, provide:
+
+    DESCRIPTION: {{
+        "Organ_Type": "Describe the organ visible in image",
+        "Pattern_Analysis": "Analyze uptake pattern based on measured feature mean {feature_mean:.4f}",
+        "Distribution_Type": "Determine if uptake is focal or diffuse based on kurtosis {feature_kurtosis:.4f}",
+        "Key_Features": "List features based on measured values"
+    }}
+
+    PREDICTION: {{
+        "Primary_Condition": "Determine condition based on feature values",
+        "Confidence_Level": "Assess based on feature clarity",
+        "Supporting_Evidence": "Use measured feature values as evidence"
+    }}
+
+    ABNORMALITIES: {{
+        "Hot_Spots": "Analyze regions with high feature values",
+        "Cold_Spots": "Analyze regions with low feature values",
+        "Pattern_Irregularities": "Identify based on feature distribution"
+    }}
+
+    QUANTITATIVE MEASUREMENTS: {{
+        "Feature_Statistics": {{
+            "Mean_Value": "{feature_mean:.4f} - {mean_status}",
+            "Kurtosis": "{feature_kurtosis:.4f} - {kurtosis_status}",
+            "Skewness": "{feature_skewness:.4f} - {skewness_status}",
+            "Standard_Deviation": "{feature_std:.4f} - {std_status}"
+        }},
+        "Clinical_Significance": "Interpret these specific values in clinical context",
+        "Comparison_To_Normal": "Compare measured values to normal ranges provided"
+    }}
+
+    Return a detailed analysis focusing on these specific measured values and their clinical implications.
+    """
+        
+        # Return diagnosis based on feature values
+        if (feature_mean > 0.6 and feature_kurtosis > 2.0):
             return "HIGH UPTAKE DETECTED\n- Feature analysis indicates significant abnormal patterns..."
-        elif feature_mean < 0.3 and feature_kurtosis < -1.0:
+        elif (feature_mean < 0.3 and feature_kurtosis < -1.0):
             return "LOW UPTAKE DETECTED\n- Feature analysis shows abnormal low-activity patterns..."
         else:
             return "NORMAL SCAN PATTERN\n- Feature analysis shows normal distribution..."
