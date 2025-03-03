@@ -935,97 +935,49 @@ Primary Finding: {
         kurtosis = stats.kurtosis(features)
         skewness = stats.skew(features)
         
+        # Add BONE scan analysis
         if scan_type == "BONE":
+            # Calculate uptake regions
             high_uptake = np.sum(img > 0.7) / img.size * 100
             low_uptake = np.sum(img < 0.3) / img.size * 100
             
             return f"""
-===========================================
-NUCLEAR MEDICINE DEPARTMENT
-Atomic Energy Cancer Hospital
-===========================================
+🔍 BONE SCAN ANALYSIS
+===================
 
-📋 PROCEDURE
+📊 QUANTITATIVE PARAMETERS
+------------------------
+• Uptake Distribution:
+  - High Uptake Areas: {high_uptake:.1f}% (>70% threshold)
+  - Low Uptake Areas: {low_uptake:.1f}% (<30% threshold)
+  - Mean Activity: {mean:.3f} ({'Increased' if mean > 0.6 else 'Decreased' if mean < 0.3 else 'Normal'})
+
+• Pattern Analysis:
+  - Distribution: {std:.3f} ({'Heterogeneous' if std > 0.2 else 'Homogeneous'})
+  - Focal Areas: {'Multiple' if kurtosis > 3.0 else 'Present' if kurtosis > 2.0 else 'None'} (Kurtosis: {kurtosis:.2f})
+  - Symmetry: {'Asymmetric' if abs(skewness) > 0.5 else 'Symmetric'} (Skewness: {skewness:.2f})
+
+🎯 INTERPRETATION
+---------------
+• Primary Finding: {
+    'Multiple focal lesions - suspicious for metastases' if kurtosis > 3.0 and high_uptake > 10
+    else 'Focal lesion(s) present - requires correlation' if kurtosis > 2.0
+    else 'No significant focal lesions'
+}
+
+• Pattern Type: {
+    'Metastatic pattern' if high_uptake > 10 and kurtosis > 2.0
+    else 'Degenerative changes' if std > 0.2 and mean < 0.6
+    else 'Normal bone uptake pattern'
+}
+
+⚠️ IMPRESSION
 -----------
-• Study: Whole Body Bone Scan
-• Radiopharmaceutical: Tc-99m MDP
-• Dose: 20-25 mCi
-• Imaging Time: 2-3 hours post injection
-
-📊 ANALYSIS
-----------
-• Quantitative Measurements:
-  - High Uptake Regions: {high_uptake:.1f}%
-  - Low Uptake Regions: {low_uptake:.1f}%
-  - Mean Activity: {mean:.3f}
-  - Distribution (SD): {std:.3f}
-  - Pattern (Kurtosis): {kurtosis:.2f}
-  - Symmetry (Skewness): {skewness:.2f}
-
-🔍 FINDINGS
-----------
-1. Uptake Pattern:
-   - {'Increased' if mean > 0.6 else 'Decreased' if mean < 0.3 else 'Normal'} tracer uptake
-   - Distribution: {'Heterogeneous' if std > 0.2 else 'Homogeneous'}
-   - {'Multiple' if kurtosis > 3.0 else 'Focal' if kurtosis > 2.0 else 'No significant'} areas of increased uptake
-
-2. Specific Areas:
-   - Axial Skeleton: {'Abnormal' if high_uptake > 10 else 'Normal'} uptake
-   - Appendicular Skeleton: {'Abnormal' if std > 0.2 else 'Normal'} distribution
-
-📝 DIAGNOSIS
------------
-{self.generate_bone_diagnosis(high_uptake, kurtosis, mean, std)}
-
-💡 ADVICE
---------
-{self.generate_bone_advice(high_uptake, kurtosis, mean)}
+{self.generate_bone_impression(high_uptake, kurtosis, mean, std)}
 """
-
-        elif scan_type == "THYROID":
-            uptake_percentage = np.sum(img > 0.5) / img.size * 100
-            
-            return f"""
-===========================================
-NUCLEAR MEDICINE DEPARTMENT
-Atomic Energy Cancer Hospital
-===========================================
-
-📋 PROCEDURE
------------
-• Study: Thyroid Scan
-• Radiopharmaceutical: {'I-131' if mean > 0.7 else 'Tc-99m'}
-• Dose: {20 if mean > 0.7 else 5} mCi
-• Imaging Time: {'24 hrs' if mean > 0.7 else '20 min'} post administration
-
-📊 ANALYSIS
-----------
-• Quantitative Measurements:
-  - Uptake Percentage: {uptake_percentage:.1f}%
-  - Distribution Index: {std:.3f}
-  - Nodularity Score: {kurtosis:.2f}
-  - Symmetry Index: {skewness:.2f}
-
-🔍 FINDINGS
-----------
-1. Uptake Pattern:
-   - {'Increased' if mean > 0.6 else 'Decreased' if mean < 0.3 else 'Normal'} tracer uptake
-   - Distribution: {'Heterogeneous' if std > 0.2 else 'Homogeneous'}
-   
-2. Nodule Assessment:
-   - {'Hot' if mean > 0.7 else 'Cold' if mean < 0.3 else 'No significant'} nodules detected
-   - Pattern: {'Multinodular' if kurtosis > 3.0 else 'Solitary' if kurtosis > 2.0 else 'Normal'}
-
-📝 DIAGNOSIS
------------
-{self.generate_thyroid_diagnosis(uptake_percentage, mean, kurtosis)}
-
-💡 ADVICE
---------
-{self.generate_thyroid_advice(mean, kurtosis)}
-"""
-
+        
         elif scan_type == "DMSA":
+            # Calculate differential function
             left_half = img[:, :img.shape[1]//2]
             right_half = img[:, img.shape[1]//2:]
             left_counts = np.sum(left_half)
@@ -1035,103 +987,128 @@ Atomic Energy Cancer Hospital
             right_percent = (right_counts/total_counts) * 100
             
             return f"""
-===========================================
-NUCLEAR MEDICINE DEPARTMENT
-Atomic Energy Cancer Hospital
-===========================================
+🔍 DMSA RENAL SCAN ANALYSIS
+==========================
 
-📋 PROCEDURE
------------
-• Study: DMSA Renal Cortical Scan
-• Radiopharmaceutical: Tc-99m DMSA
-• Dose: 5 mCi
-• Imaging Time: 3 hours post injection
-
-📊 ANALYSIS
-----------
+📊 QUANTITATIVE PARAMETERS
+------------------------
 • Split Function:
-  - Left Kidney: {left_percent:.1f}%
-  - Right Kidney: {right_percent:.1f}%
+  - Left Kidney: {left_percent:.1f}% (Normal: 45-55%)
+  - Right Kidney: {right_percent:.1f}% (Normal: 45-55%)
   - Differential: {abs(left_percent - right_percent):.1f}%
 
-🔍 FINDINGS
-----------
-1. Differential Function:
-   - Left Kidney: {'Normal' if 45 <= left_percent <= 55 else 'Abnormal'}
-   - Right Kidney: {'Normal' if 45 <= right_percent <= 55 else 'Abnormal'}
+• Cortical Assessment:
+  - Mean Uptake: {mean:.3f} ({'Normal' if 0.4 < mean < 0.6 else 'Abnormal'})
+  - Uniformity: {std:.3f} ({'Homogeneous' if std < 0.2 else 'Non-homogeneous'})
+  - Focal Defects: {'Present' if kurtosis > 2.0 else 'Absent'} (Kurtosis: {kurtosis:.2f})
+  - Symmetry: {'Asymmetric' if abs(skewness) > 0.5 else 'Symmetric'} (Skewness: {skewness:.2f})
 
-2. Cortical Assessment:
-   - Uptake: {'Normal' if 0.4 < mean < 0.6 else 'Abnormal'}
-   - Pattern: {'Homogeneous' if std < 0.2 else 'Non-homogeneous'}
-   - Defects: {'Present' if kurtosis > 2.0 else 'Absent'}
-
-📝 DIAGNOSIS
------------
-{self.generate_dmsa_diagnosis(left_percent, right_percent, mean, kurtosis)}
-
-💡 ADVICE
---------
-{self.generate_dmsa_advice(left_percent, right_percent, kurtosis)}
+🎯 INTERPRETATION
+---------------
+• Function: {
+    'Normal bilateral function' if 45 <= left_percent <= 55 and 45 <= right_percent <= 55
+    else 'Asymmetric renal function - requires correlation'
+}
+• Cortical Pattern: {
+    'Normal cortical uptake' if mean > 0.4 and std < 0.2
+    else 'Abnormal cortical pattern - possible scarring/defects'
+}
 """
 
-    def generate_bone_diagnosis(self, high_uptake, kurtosis, mean, std):
+        elif scan_type == "THYROID":
+            return f"""
+🔍 THYROID SCAN ANALYSIS
+======================
+
+📊 QUANTITATIVE PARAMETERS
+------------------------
+• Uptake Assessment:
+  - Mean Uptake: {mean:.3f} ({'Increased' if mean > 0.6 else 'Decreased' if mean < 0.3 else 'Normal'})
+  - Distribution: {std:.3f} ({'Heterogeneous' if std > 0.2 else 'Homogeneous'})
+  - Pattern: {'Nodular' if kurtosis > 2.0 else 'Diffuse'} (Kurtosis: {kurtosis:.2f})
+  - Symmetry: {'Asymmetric' if abs(skewness) > 0.5 else 'Symmetric'} (Skewness: {skewness:.2f})
+
+🎯 INTERPRETATION
+---------------
+• Primary Finding: {
+    'Toxic nodule(s)/Graves disease' if mean > 0.6 and kurtosis > 2.0
+    else 'Cold nodule(s) - requires correlation' if mean < 0.3 and kurtosis > 2.0
+    else 'Normal thyroid uptake pattern'
+}
+• Pattern Type: {
+    'Multinodular' if kurtosis > 3.0
+    else 'Solitary nodule' if kurtosis > 2.0
+    else 'Diffuse uptake'
+}
+"""
+
+        elif scan_type == "HIDA":
+            return f"""
+🔍 HEPATOBILIARY SCAN ANALYSIS
+===========================
+
+📊 QUANTITATIVE PARAMETERS
+------------------------
+• Hepatic Phase:
+  - Extraction: {mean:.3f} ({'Normal' if mean > 0.4 else 'Reduced'})
+  - Pattern: {std:.3f} ({'Heterogeneous' if std > 0.2 else 'Homogeneous'})
+  
+• Biliary Drainage:
+  - Flow Pattern: {'Delayed' if kurtosis > 2.0 else 'Normal'} (Kurtosis: {kurtosis:.2f})
+  - Transit: {'Abnormal' if abs(skewness) > 0.5 else 'Normal'} (Skewness: {skewness:.2f})
+
+🎯 INTERPRETATION
+---------------
+• Primary Finding: {
+    'Biliary obstruction pattern' if kurtosis > 2.0 and mean < 0.3
+    else 'Hepatocellular dysfunction' if mean < 0.4
+    else 'Normal hepatobiliary function'
+}
+• Flow Assessment: {
+    'Delayed biliary drainage' if kurtosis > 2.0
+    else 'Patent biliary tree'
+}
+"""
+
+        else:
+            # Default analysis for unknown scan types
+            return f"""
+🔍 NUCLEAR SCAN ANALYSIS
+=====================
+
+📊 QUANTITATIVE PARAMETERS
+------------------------
+• General Metrics:
+  - Mean Activity: {mean:.3f}
+  - Distribution (SD): {std:.3f}
+  - Pattern (Kurtosis): {kurtosis:.2f}
+  - Symmetry (Skewness): {skewness:.2f}
+
+🎯 INTERPRETATION
+---------------
+• Activity Pattern: {'Heterogeneous' if std > 0.2 else 'Homogeneous'}
+• Focal Areas: {'Present' if kurtosis > 2.0 else 'Absent'}
+• Distribution: {'Asymmetric' if abs(skewness) > 0.5 else 'Symmetric'}
+
+Note: Scan type '{scan_type}' detected. Generic analysis provided.
+"""
+
+    def generate_bone_impression(self, high_uptake, kurtosis, mean, std):
+        """Generate bone scan impression"""
+        impressions = []
+        
         if high_uptake > 10 and kurtosis > 3.0:
-            return "Multiple focal lesions suspicious for metastatic disease"
+            impressions.append("Multiple areas of increased uptake suspicious for metastatic disease")
         elif high_uptake > 5 and kurtosis > 2.0:
-            return "Focal areas of increased uptake - possible degenerative changes vs metastatic disease"
-        elif std > 0.2 and mean < 0.6:
-            return "Pattern consistent with degenerative changes"
-        else:
-            return "Normal bone scan without evidence of metastatic disease"
-
-    def generate_bone_advice(self, high_uptake, kurtosis, mean):
-        advice = []
-        if high_uptake > 10 and kurtosis > 3.0:
-            advice.extend([
-                "1. Correlation with other imaging modalities (CT/MRI)",
-                "2. Serum tumor markers",
-                "3. Follow-up scan in 3-6 months"
-            ])
-        elif high_uptake > 5 or kurtosis > 2.0:
-            advice.extend([
-                "1. Correlation with radiographs/CT",
-                "2. Clinical correlation for degenerative changes",
-                "3. Follow-up if clinically indicated"
-            ])
-        else:
-            advice.extend([
-                "1. No immediate follow-up required",
-                "2. Routine follow-up as per clinical protocol"
-            ])
-        return "\n".join(advice)
-
-    def generate_thyroid_diagnosis(self, uptake_percentage, mean, kurtosis):
-        if uptake_percentage > 4.0 and mean > 0.7:
-            return "Toxic nodule(s)/Graves disease"
-        elif uptake_percentage < 0.5 and mean < 0.3:
-            return "Cold nodule(s) - requires correlation"
-        else:
-            return "Normal thyroid uptake pattern"
-
-    def generate_thyroid_advice(self, mean, kurtosis):
-        if mean > 0.7:
-            return "Immediate clinical correlation recommended"
-        elif mean < 0.3:
-            return "Further evaluation recommended"
-        else:
-            return "No immediate follow-up required"
-
-    def generate_dmsa_diagnosis(self, left_percent, right_percent, mean, kurtosis):
-        if left_percent < 0.4 or right_percent < 0.4:
-            return "Abnormal cortical pattern - possible scarring/defects"
-        else:
-            return "Normal cortical uptake"
-
-    def generate_dmsa_advice(self, left_percent, right_percent, kurtosis):
-        if left_percent < 0.4 or right_percent < 0.4:
-            return "Further evaluation recommended"
-        else:
-            return "No additional imaging required at this time"
+            impressions.append("Focal areas of increased uptake - correlation with other imaging recommended")
+        
+        if std > 0.2 and mean < 0.6:
+            impressions.append("Pattern suggestive of degenerative changes")
+        
+        if not impressions:
+            return "Normal bone scan without evidence of metastatic disease or significant focal abnormality."
+        
+        return "IMPRESSION: " + "; ".join(impressions) + ". Clinical correlation recommended."
 
 def uz():
     obj = practice()

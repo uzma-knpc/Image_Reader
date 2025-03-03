@@ -176,8 +176,8 @@ def main():
     with gr.Blocks(title="MEDICAL IMAGE ANALYSIS SYSTEM") as iface:
         gr.Markdown("""
             <div style='text-align: center'>
-                <h1 style='font-size: 2.5em; font-weight: bold; color=blue>MEDICAL IMAGE ANALYSIS SYSTEM</h1>
-                <h2 style='font-size: 1.5em; font-weight: bold; color=green>ATOMIC ENERGY CANCER HOSPITAL (AECHs)</h2>
+                <h1 style='font-size: 2.5em; font-weight: bold'>MEDICAL IMAGE ANALYSIS SYSTEM</h1>
+                <h2 style='font-size: 1.5em; font-weight: bold'>ATOMIC ENERGY CANCER HOSPITAL</h2>
                 <p style='font-size: 1em; color: gray'>AI-Assisted Nuclear Medicine Analysis</p>
             </div>
         """)
@@ -207,7 +207,7 @@ def main():
         # Footer
         gr.Markdown("""
             <div style='text-align: right; margin-top: 20px'>
-                <p style='font-size: 12px; font-style: italic'>@ 2025(AECHs) Pakistan Atomic Energy Commission</p>
+                <p style='font-size: 12px; font-style: italic'>@Pakistan Atomic Energy Commission</p>
             </div>
         """)
         

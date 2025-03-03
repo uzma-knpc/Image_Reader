@@ -139,7 +139,7 @@ class practice:
 
     # Function to Extract Features
     def extract_features(self, tensor=None):
-        """Extract and normalize features with proper scaling"""
+        """Extract and normalize features consistently"""
         if tensor is None:
             tensor = self.preprocess_image()
         
@@ -148,29 +148,26 @@ class practice:
             features = self.model(tensor)
             features_np = features.numpy().flatten()
             
-            # Normalize features to 0-1 range before analysis
-            normalized_features = (features_np - features_np.min()) / (features_np.max() - features_np.min())
-            
-            # Store normalized feature values for reporting
+            # Store raw feature values for reporting
             self.feature_stats = {
-                'raw_mean': np.mean(normalized_features),  # Now will be 0-1
-                'raw_std': np.std(normalized_features),
-                'raw_skewness': stats.skew(normalized_features),
-                'raw_kurtosis': stats.kurtosis(normalized_features),
-                'raw_min': np.min(normalized_features),
-                'raw_max': np.max(normalized_features)
+                'raw_mean': np.mean(features_np),
+                'raw_std': np.std(features_np),
+                'raw_skewness': stats.skew(features_np),
+                'raw_kurtosis': stats.kurtosis(features_np),
+                'raw_min': np.min(features_np),
+                'raw_max': np.max(features_np)
             }
             
-            # Print normalized statistics
-            print("\nNormalized Feature Statistics:")
-            print(f"Mean: {self.feature_stats['raw_mean']:.4f}")  # Should be positive now
+            # Print raw statistics
+            print("\nRaw Feature Statistics:")
+            print(f"Mean: {self.feature_stats['raw_mean']:.4f}")
             print(f"Std Dev: {self.feature_stats['raw_std']:.4f}")
             print(f"Skewness: {self.feature_stats['raw_skewness']:.4f}")
             print(f"Kurtosis: {self.feature_stats['raw_kurtosis']:.4f}")
-            print(f"Min: {self.feature_stats['raw_min']:.4f}")  # Will be 0
-            print(f"Max: {self.feature_stats['raw_max']:.4f}")  # Will be 1
+            print(f"Min: {self.feature_stats['raw_min']:.4f}")
+            print(f"Max: {self.feature_stats['raw_max']:.4f}")
             
-            return normalized_features  # Return normalized features
+            return features_np
 
     # Function to create image embeddings
     def create_image_embedding(self, image_path=None):
@@ -216,40 +213,102 @@ class practice:
 
     # Diagnostic function with criteria
     def diagnose_image(self, img, features):
-        """Diagnose using normalized features"""
-        # Image metrics (already 0-1)
+        """Diagnose using properly scaled features"""
+        # Image metrics
         mean_intensity = np.mean(img)
         std_intensity = np.std(img)
         uptake_percentage = np.sum(img > 0.5) / img.size
         
-        # Feature metrics (now also 0-1)
-        feature_mean = self.feature_stats['raw_mean']  # Will be positive
-        feature_std = self.feature_stats['raw_std']
-        feature_kurtosis = self.feature_stats['raw_kurtosis']
-        feature_skewness = self.feature_stats['raw_skewness']
+        # Feature metrics with proper scaling
+        feature_mean = np.mean(features)  # Should now be between 0 and 1
+        feature_std = np.std(features)
+        feature_kurtosis = stats.kurtosis(features)
+        feature_skewness = stats.skew(features)
         
-        # Store all normalized metrics
+        # Store metrics
         self.diagnosis_metrics = {
             "Mean Intensity": mean_intensity,
             "Standard Deviation": std_intensity,
             "Uptake Percentage": uptake_percentage,
-            "Feature Mean": feature_mean,  # Now positive
+            "Feature Mean": feature_mean,
             "Feature Std": feature_std,
             "Feature Kurtosis": feature_kurtosis,
             "Feature Skewness": feature_skewness
         }
         
-        # Print diagnostic metrics for verification
-        print("\nDiagnostic Metrics (All Normalized):")
+        # Print diagnostics
+        print("\nDiagnostic Metrics:")
         print(f"Image Mean Intensity: {mean_intensity:.4f}")
-        print(f"Feature Mean: {feature_mean:.4f}")  # Should match
+        print(f"Feature Mean: {feature_mean:.4f}")
         print(f"Feature Kurtosis: {feature_kurtosis:.4f}")
         print(f"Feature Skewness: {feature_skewness:.4f}")
         
-        # Update thresholds for normalized values
-        if feature_mean > 0.6 and feature_kurtosis > 2.0:
+        # Determine status strings
+        mean_status = "High (Hyperactive)" if feature_mean > 0.6 else "Low (Hypoactive)" if feature_mean < 0.3 else "Normal"
+        kurtosis_status = "High (Focal)" if feature_kurtosis > 2.0 else "Low (Diffuse)" if feature_kurtosis < -1.0 else "Normal"
+        skewness_status = "Positive (Hot Spots)" if feature_skewness > 0.5 else "Negative (Cold Spots)" if feature_skewness < -0.5 else "Normal"
+        std_status = "High Variability" if feature_std > 0.25 else "Low Variability" if feature_std < 0.15 else "Normal"
+        
+        # Update prompt with actual values
+        self.prompt = f"""This image contains a human organ image along with notes and graph.
+    Analyze the image based on these measured feature values and their clinical implications:
+
+    MEASURED FEATURE VALUES:
+    1. Feature Mean: {feature_mean:.4f}
+       - Normal Range: 0.3 to 0.6
+       - Current Status: {mean_status}
+    
+    2. Feature Kurtosis: {feature_kurtosis:.4f}
+       - Normal Range: -2.0 to 2.0
+       - Current Status: {kurtosis_status}
+    
+    3. Feature Skewness: {feature_skewness:.4f}
+       - Normal Range: -0.5 to 0.5
+       - Current Status: {skewness_status}
+    
+    4. Feature Standard Deviation: {feature_std:.4f}
+       - Normal Range: 0.15 to 0.25
+       - Current Status: {std_status}
+
+    Based on these specific values, provide:
+
+    DESCRIPTION: {{
+        "Organ_Type": "Describe the organ visible in image",
+        "Pattern_Analysis": "Analyze uptake pattern based on measured feature mean {feature_mean:.4f}",
+        "Distribution_Type": "Determine if uptake is focal or diffuse based on kurtosis {feature_kurtosis:.4f}",
+        "Key_Features": "List features based on measured values"
+    }}
+
+    PREDICTION: {{
+        "Primary_Condition": "Determine condition based on feature values",
+        "Confidence_Level": "Assess based on feature clarity",
+        "Supporting_Evidence": "Use measured feature values as evidence"
+    }}
+
+    ABNORMALITIES: {{
+        "Hot_Spots": "Analyze regions with high feature values",
+        "Cold_Spots": "Analyze regions with low feature values",
+        "Pattern_Irregularities": "Identify based on feature distribution"
+    }}
+
+    QUANTITATIVE MEASUREMENTS: {{
+        "Feature_Statistics": {{
+            "Mean_Value": "{feature_mean:.4f} - {mean_status}",
+            "Kurtosis": "{feature_kurtosis:.4f} - {kurtosis_status}",
+            "Skewness": "{feature_skewness:.4f} - {skewness_status}",
+            "Standard_Deviation": "{feature_std:.4f} - {std_status}"
+        }},
+        "Clinical_Significance": "Interpret these specific values in clinical context",
+        "Comparison_To_Normal": "Compare measured values to normal ranges provided"
+    }}
+
+    Return a detailed analysis focusing on these specific measured values and their clinical implications.
+    """
+        
+        # Return diagnosis based on feature values
+        if (feature_mean > 0.6 and feature_kurtosis > 2.0):
             return "HIGH UPTAKE DETECTED\n- Feature analysis indicates significant abnormal patterns..."
-        elif feature_mean < 0.3 and feature_kurtosis < -1.0:
+        elif (feature_mean < 0.3 and feature_kurtosis < -1.0):
             return "LOW UPTAKE DETECTED\n- Feature analysis shows abnormal low-activity patterns..."
         else:
             return "NORMAL SCAN PATTERN\n- Feature analysis shows normal distribution..."
@@ -565,7 +624,7 @@ Primary Finding: {
         patient_details = self.extract_patient_details(self.normalized_img)
         
         report = f"""
-# MEDICAL IMAGING ANALYSIS REPORT
+# �� MEDICAL IMAGING ANALYSIS REPORT
 ## Atomic Energy Cancer Hospital, PAKISTAN
 ### AI-Assisted Image Analysis Report
 
@@ -599,8 +658,8 @@ Primary Finding: {
 """
         return report
 
-    def process_and_generate_reports(self, file_paths, titles, doctor_name, test_type="THYROID"):
-        """Process images with test-specific analysis"""
+    def process_and_generate_reports(self, file_paths, titles, doctor_name):
+        """Process images and generate reports"""
         reports = []
         rows, cols = 2, 3
         fig, axes = plt.subplots(rows, cols, figsize=(12, 8))
@@ -618,8 +677,8 @@ Primary Finding: {
             tensor = self.preprocess_image()
             features = self.extract_features(tensor)  # This will return normalized features
             
-            # Get test-specific diagnosis
-            diagnosis = self.diagnose_by_test_type(test_type, features, self.normalized_img)
+            # Generate diagnosis
+            diagnosis = self.diagnose_image(self.normalized_img, features)
             
             # Generate report
             scan_id = i + 1
@@ -693,445 +752,6 @@ Primary Finding: {
         print(f"Maximum Value: {np.max(features):.4f}")
         print(f"Minimum Value: {np.min(features):.4f}")
         print("-" * 30)
-
-    def diagnose_by_test_type(self, test_type, features, img):
-        """Diagnose based on specific nuclear medicine test parameters"""
-        
-        # Calculate base metrics
-        feature_mean = np.mean(features)
-        feature_std = np.std(features)
-        feature_kurtosis = stats.kurtosis(features)
-        feature_skewness = stats.skew(features)
-        
-        # Test-specific analysis
-        if test_type == "DMSA":
-            # Calculate differential function for left and right kidneys
-            left_roi = img[:, :img.shape[1]//2]
-            right_roi = img[:, img.shape[1]//2:]
-            left_counts = np.sum(left_roi)
-            right_counts = np.sum(right_roi)
-            total_counts = left_counts + right_counts
-            
-            left_percentage = (left_counts/total_counts) * 100
-            right_percentage = (right_counts/total_counts) * 100
-            
-            analysis = f"""
-🔍 DMSA RENAL CORTICAL SCAN ANALYSIS
-===================================
-
-📊 QUANTITATIVE MEASUREMENTS
--------------------------
-• Split Function:
-  - Left Kidney: {left_percentage:.1f}% (Normal: 45-55%)
-  - Right Kidney: {right_percentage:.1f}% (Normal: 45-55%)
-
-• Cortical Assessment:
-  - Scarring: {'Present' if feature_mean < 0.3 else 'Absent'}
-  - Focal Defects: {'Detected' if feature_kurtosis > 2.0 else 'None'}
-  - Cortical Thickness: {'Reduced' if feature_mean < 0.4 else 'Normal'}
-
-🎯 INTERPRETATION
----------------
-• Function: {
-    'Normal bilateral function' if 45 <= left_percentage <= 55 and 45 <= right_percentage <= 55
-    else 'Asymmetric function - requires correlation'
-}
-• Cortical Pattern: {
-    'Normal cortical uptake' if feature_mean > 0.4 and feature_kurtosis < 2.0
-    else 'Abnormal cortical pattern - possible scarring/defects'
-}
-
-⚠️ IMPRESSION
------------
-{self.generate_dmsa_impression(left_percentage, right_percentage, feature_mean, feature_kurtosis)}
-"""
-
-        elif test_type == "THYROID":
-            # Calculate thyroid uptake and distribution
-            uptake_percentage = np.sum(img > 0.5) / img.size * 100
-            
-            analysis = f"""
-🔍 THYROID SCAN ANALYSIS
-======================
-
-📊 QUANTITATIVE MEASUREMENTS
--------------------------
-• Uptake Values:
-  - Total Uptake: {uptake_percentage:.1f}% (Normal: 0.5-4.0%)
-  - Distribution: {'Homogeneous' if feature_std < 0.2 else 'Heterogeneous'}
-
-• Nodule Assessment:
-  - Hot Nodules: {'Present' if feature_mean > 0.7 and feature_kurtosis > 2.0 else 'Absent'}
-  - Cold Nodules: {'Present' if feature_mean < 0.3 and feature_kurtosis > 2.0 else 'Absent'}
-  - Pattern: {'Multinodular' if feature_kurtosis > 3.0 else 'Solitary' if feature_kurtosis > 2.0 else 'No nodules'}
-
-🎯 INTERPRETATION
----------------
-• Uptake Pattern: {
-    'Increased - suggests hyperthyroidism' if uptake_percentage > 4.0
-    else 'Decreased - suggests hypothyroidism' if uptake_percentage < 0.5
-    else 'Normal uptake'
-}
-• Distribution: {
-    'Toxic nodule(s) present' if feature_mean > 0.7 and feature_kurtosis > 2.0
-    else 'Cold nodule(s) present' if feature_mean < 0.3 and feature_kurtosis > 2.0
-    else 'Normal distribution'
-}
-
-⚠️ IMPRESSION
------------
-{self.generate_thyroid_impression(uptake_percentage, feature_mean, feature_kurtosis)}
-"""
-
-        elif test_type == "HIDA":
-            # Calculate hepatobiliary parameters
-            transit_time = self.calculate_transit_time(features)
-            ejection_fraction = self.calculate_ef(features)
-            
-            analysis = f"""
-🔍 HEPATOBILIARY SCAN ANALYSIS
-===========================
-
-📊 QUANTITATIVE MEASUREMENTS
--------------------------
-• Time Activity Parameters:
-  - Hepatic Transit Time: {transit_time:.1f} min (Normal: 45-60 min)
-  - Gallbladder Ejection Fraction: {ejection_fraction:.1f}% (Normal: 35-80%)
-
-• Flow Assessment:
-  - Bile Flow: {'Normal' if feature_mean > 0.4 else 'Delayed'}
-  - Obstruction: {'Present' if feature_kurtosis > 2.0 else 'Absent'}
-  - Patency: {'Patent' if feature_mean > 0.3 else 'Possible obstruction'}
-
-🎯 INTERPRETATION
----------------
-• Hepatic Function: {
-    'Normal hepatic extraction' if feature_mean > 0.4
-    else 'Reduced hepatic function'
-}
-• Biliary Drainage: {
-    'Normal drainage' if transit_time < 60
-    else 'Delayed drainage - possible obstruction'
-}
-• Gallbladder Function: {
-    'Normal' if 35 <= ejection_fraction <= 80
-    else 'Abnormal - possible pathology'
-}
-
-⚠️ IMPRESSION
------------
-{self.generate_hida_impression(transit_time, ejection_fraction, feature_mean)}
-"""
-
-        else:
-            analysis = "Unknown test type or test type not supported"
-        
-        return analysis
-
-    def generate_dmsa_impression(self, left_pct, right_pct, mean, kurtosis):
-        """Generate DMSA scan impression"""
-        impressions = []
-        
-        if abs(left_pct - right_pct) > 10:
-            impressions.append("Asymmetric renal function")
-        if mean < 0.3:
-            impressions.append("Evidence of renal scarring")
-        if kurtosis > 2.0:
-            impressions.append("Focal cortical defects present")
-        
-        if not impressions:
-            return "Normal DMSA scan appearance with symmetric renal function and no evidence of scarring or cortical defects."
-        
-        return "IMPRESSION: " + "; ".join(impressions) + "."
-
-    def generate_thyroid_impression(self, uptake, mean, kurtosis):
-        """Generate thyroid scan impression"""
-        if uptake > 4.0 and mean > 0.7:
-            return "IMPRESSION: Increased thyroid uptake with hot nodule(s) - consistent with toxic nodular goiter/Graves' disease."
-        elif uptake < 0.5 and mean < 0.3:
-            return "IMPRESSION: Decreased thyroid uptake with cold nodule(s) - requires further evaluation to rule out malignancy."
-        elif kurtosis > 2.0:
-            return "IMPRESSION: Nodular thyroid with heterogeneous uptake - correlation with ultrasound recommended."
-        else:
-            return "IMPRESSION: Normal thyroid scan appearance with homogeneous tracer distribution."
-
-    def generate_hida_impression(self, transit_time, ef, mean):
-        """Generate HIDA scan impression"""
-        impressions = []
-        
-        if transit_time > 60:
-            impressions.append("Delayed biliary drainage")
-        if ef < 35:
-            impressions.append("Reduced gallbladder ejection fraction")
-        if mean < 0.3:
-            impressions.append("Possible biliary obstruction")
-        
-        if not impressions:
-            return "IMPRESSION: Normal hepatobiliary scan with appropriate transit time and gallbladder ejection fraction."
-        
-        return "IMPRESSION: " + "; ".join(impressions) + ". Clinical correlation recommended."
-
-    def detect_scan_type(self, image):
-        """Enhanced scan type detection"""
-        try:
-            # Initialize OCR
-            reader = Reader(['en'])
-            
-            # Convert image for OCR
-            if isinstance(image, np.ndarray):
-                image_np = image
-            else:
-                image_np = np.array(image)
-            
-            # Extract text
-            results = reader.readtext(image_np)
-            text = ' '.join([res[1].lower() for res in results])
-            print(f"Extracted text: {text}")  # Debug print
-            
-            # Enhanced keywords for each scan type
-            scan_keywords = {
-                "BONE": ["bone", "skeletal", "whole body", "mets", "metastases", "mdp", "hmdp", "tc99m"],
-                "DMSA": ["dmsa", "renal", "kidney", "cortical", "differential", "technetium", "tc-99m dmsa"],
-                "THYROID": ["thyroid", "i-131", "tc-99m", "pertechnetate", "uptake", "thyroid scan"],
-                "HIDA": ["hida", "hepatobiliary", "gallbladder", "liver", "biliary", "cholescintigraphy"],
-                "MAG3": ["mag3", "renogram", "perfusion", "clearance", "renal function"],
-                "DTPA": ["dtpa", "gfr", "glomerular", "filtration", "kidney function"],
-                "PARATHYROID": ["parathyroid", "sestamibi", "adenoma", "mibi"]
-            }
-            
-            # Check for keywords
-            for scan_type, keywords in scan_keywords.items():
-                if any(keyword in text for keyword in keywords):
-                    print(f"Detected scan type from text: {scan_type}")  # Debug print
-                    return scan_type
-            
-            # Fallback to feature-based detection
-            if hasattr(self, 'feature_stats'):
-                print("Using feature-based detection")  # Debug print
-                mean = self.feature_stats['raw_mean']
-                kurtosis = self.feature_stats['raw_kurtosis']
-                
-                # Enhanced feature-based detection
-                if kurtosis > 2.0 and mean > 0.6:
-                    return "THYROID"
-                elif mean < 0.4 and abs(kurtosis) < 1.0:
-                    return "DMSA"
-                elif kurtosis > 1.5 and mean < 0.3:
-                    return "HIDA"
-                elif kurtosis > 2.5:
-                    return "BONE"
-            
-            print("Warning: Using default scan type")  # Debug print
-            return "BONE"  # Default to BONE if no clear match
-            
-        except Exception as e:
-            print(f"Error in scan detection: {e}")  # Debug print
-            return "UNKNOWN"
-
-    def analyze_scan_features(self, scan_type, features, img):
-        """Analyze features based on detected scan type"""
-        mean = np.mean(features)
-        std = np.std(features)
-        kurtosis = stats.kurtosis(features)
-        skewness = stats.skew(features)
-        
-        if scan_type == "BONE":
-            high_uptake = np.sum(img > 0.7) / img.size * 100
-            low_uptake = np.sum(img < 0.3) / img.size * 100
-            
-            return f"""
-===========================================
-NUCLEAR MEDICINE DEPARTMENT
-Atomic Energy Cancer Hospital
-===========================================
-
-📋 PROCEDURE
------------
-• Study: Whole Body Bone Scan
-• Radiopharmaceutical: Tc-99m MDP
-• Dose: 20-25 mCi
-• Imaging Time: 2-3 hours post injection
-
-📊 ANALYSIS
-----------
-• Quantitative Measurements:
-  - High Uptake Regions: {high_uptake:.1f}%
-  - Low Uptake Regions: {low_uptake:.1f}%
-  - Mean Activity: {mean:.3f}
-  - Distribution (SD): {std:.3f}
-  - Pattern (Kurtosis): {kurtosis:.2f}
-  - Symmetry (Skewness): {skewness:.2f}
-
-🔍 FINDINGS
-----------
-1. Uptake Pattern:
-   - {'Increased' if mean > 0.6 else 'Decreased' if mean < 0.3 else 'Normal'} tracer uptake
-   - Distribution: {'Heterogeneous' if std > 0.2 else 'Homogeneous'}
-   - {'Multiple' if kurtosis > 3.0 else 'Focal' if kurtosis > 2.0 else 'No significant'} areas of increased uptake
-
-2. Specific Areas:
-   - Axial Skeleton: {'Abnormal' if high_uptake > 10 else 'Normal'} uptake
-   - Appendicular Skeleton: {'Abnormal' if std > 0.2 else 'Normal'} distribution
-
-📝 DIAGNOSIS
------------
-{self.generate_bone_diagnosis(high_uptake, kurtosis, mean, std)}
-
-💡 ADVICE
---------
-{self.generate_bone_advice(high_uptake, kurtosis, mean)}
-"""
-
-        elif scan_type == "THYROID":
-            uptake_percentage = np.sum(img > 0.5) / img.size * 100
-            
-            return f"""
-===========================================
-NUCLEAR MEDICINE DEPARTMENT
-Atomic Energy Cancer Hospital
-===========================================
-
-📋 PROCEDURE
------------
-• Study: Thyroid Scan
-• Radiopharmaceutical: {'I-131' if mean > 0.7 else 'Tc-99m'}
-• Dose: {20 if mean > 0.7 else 5} mCi
-• Imaging Time: {'24 hrs' if mean > 0.7 else '20 min'} post administration
-
-📊 ANALYSIS
-----------
-• Quantitative Measurements:
-  - Uptake Percentage: {uptake_percentage:.1f}%
-  - Distribution Index: {std:.3f}
-  - Nodularity Score: {kurtosis:.2f}
-  - Symmetry Index: {skewness:.2f}
-
-🔍 FINDINGS
-----------
-1. Uptake Pattern:
-   - {'Increased' if mean > 0.6 else 'Decreased' if mean < 0.3 else 'Normal'} tracer uptake
-   - Distribution: {'Heterogeneous' if std > 0.2 else 'Homogeneous'}
-   
-2. Nodule Assessment:
-   - {'Hot' if mean > 0.7 else 'Cold' if mean < 0.3 else 'No significant'} nodules detected
-   - Pattern: {'Multinodular' if kurtosis > 3.0 else 'Solitary' if kurtosis > 2.0 else 'Normal'}
-
-📝 DIAGNOSIS
------------
-{self.generate_thyroid_diagnosis(uptake_percentage, mean, kurtosis)}
-
-💡 ADVICE
---------
-{self.generate_thyroid_advice(mean, kurtosis)}
-"""
-
-        elif scan_type == "DMSA":
-            left_half = img[:, :img.shape[1]//2]
-            right_half = img[:, img.shape[1]//2:]
-            left_counts = np.sum(left_half)
-            right_counts = np.sum(right_half)
-            total_counts = left_counts + right_counts
-            left_percent = (left_counts/total_counts) * 100
-            right_percent = (right_counts/total_counts) * 100
-            
-            return f"""
-===========================================
-NUCLEAR MEDICINE DEPARTMENT
-Atomic Energy Cancer Hospital
-===========================================
-
-📋 PROCEDURE
------------
-• Study: DMSA Renal Cortical Scan
-• Radiopharmaceutical: Tc-99m DMSA
-• Dose: 5 mCi
-• Imaging Time: 3 hours post injection
-
-📊 ANALYSIS
-----------
-• Split Function:
-  - Left Kidney: {left_percent:.1f}%
-  - Right Kidney: {right_percent:.1f}%
-  - Differential: {abs(left_percent - right_percent):.1f}%
-
-🔍 FINDINGS
-----------
-1. Differential Function:
-   - Left Kidney: {'Normal' if 45 <= left_percent <= 55 else 'Abnormal'}
-   - Right Kidney: {'Normal' if 45 <= right_percent <= 55 else 'Abnormal'}
-
-2. Cortical Assessment:
-   - Uptake: {'Normal' if 0.4 < mean < 0.6 else 'Abnormal'}
-   - Pattern: {'Homogeneous' if std < 0.2 else 'Non-homogeneous'}
-   - Defects: {'Present' if kurtosis > 2.0 else 'Absent'}
-
-📝 DIAGNOSIS
------------
-{self.generate_dmsa_diagnosis(left_percent, right_percent, mean, kurtosis)}
-
-💡 ADVICE
---------
-{self.generate_dmsa_advice(left_percent, right_percent, kurtosis)}
-"""
-
-    def generate_bone_diagnosis(self, high_uptake, kurtosis, mean, std):
-        if high_uptake > 10 and kurtosis > 3.0:
-            return "Multiple focal lesions suspicious for metastatic disease"
-        elif high_uptake > 5 and kurtosis > 2.0:
-            return "Focal areas of increased uptake - possible degenerative changes vs metastatic disease"
-        elif std > 0.2 and mean < 0.6:
-            return "Pattern consistent with degenerative changes"
-        else:
-            return "Normal bone scan without evidence of metastatic disease"
-
-    def generate_bone_advice(self, high_uptake, kurtosis, mean):
-        advice = []
-        if high_uptake > 10 and kurtosis > 3.0:
-            advice.extend([
-                "1. Correlation with other imaging modalities (CT/MRI)",
-                "2. Serum tumor markers",
-                "3. Follow-up scan in 3-6 months"
-            ])
-        elif high_uptake > 5 or kurtosis > 2.0:
-            advice.extend([
-                "1. Correlation with radiographs/CT",
-                "2. Clinical correlation for degenerative changes",
-                "3. Follow-up if clinically indicated"
-            ])
-        else:
-            advice.extend([
-                "1. No immediate follow-up required",
-                "2. Routine follow-up as per clinical protocol"
-            ])
-        return "\n".join(advice)
-
-    def generate_thyroid_diagnosis(self, uptake_percentage, mean, kurtosis):
-        if uptake_percentage > 4.0 and mean > 0.7:
-            return "Toxic nodule(s)/Graves disease"
-        elif uptake_percentage < 0.5 and mean < 0.3:
-            return "Cold nodule(s) - requires correlation"
-        else:
-            return "Normal thyroid uptake pattern"
-
-    def generate_thyroid_advice(self, mean, kurtosis):
-        if mean > 0.7:
-            return "Immediate clinical correlation recommended"
-        elif mean < 0.3:
-            return "Further evaluation recommended"
-        else:
-            return "No immediate follow-up required"
-
-    def generate_dmsa_diagnosis(self, left_percent, right_percent, mean, kurtosis):
-        if left_percent < 0.4 or right_percent < 0.4:
-            return "Abnormal cortical pattern - possible scarring/defects"
-        else:
-            return "Normal cortical uptake"
-
-    def generate_dmsa_advice(self, left_percent, right_percent, kurtosis):
-        if left_percent < 0.4 or right_percent < 0.4:
-            return "Further evaluation recommended"
-        else:
-            return "No additional imaging required at this time"
 
 def uz():
     obj = practice()

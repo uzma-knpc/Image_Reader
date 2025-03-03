@@ -872,60 +872,56 @@ Primary Finding: {
         return "IMPRESSION: " + "; ".join(impressions) + ". Clinical correlation recommended."
 
     def detect_scan_type(self, image):
-        """Enhanced scan type detection"""
+        """Detect scan type from image using OCR and keywords"""
         try:
             # Initialize OCR
             reader = Reader(['en'])
             
-            # Convert image for OCR
-            if isinstance(image, np.ndarray):
-                image_np = image
-            else:
+            # Convert PIL Image to numpy array if needed
+            if isinstance(image, Image.Image):
                 image_np = np.array(image)
+            else:
+                image_np = image
             
-            # Extract text
+            # Extract text from image
             results = reader.readtext(image_np)
             text = ' '.join([res[1].lower() for res in results])
-            print(f"Extracted text: {text}")  # Debug print
             
-            # Enhanced keywords for each scan type
+            # Define keywords for each scan type
             scan_keywords = {
-                "BONE": ["bone", "skeletal", "whole body", "mets", "metastases", "mdp", "hmdp", "tc99m"],
-                "DMSA": ["dmsa", "renal", "kidney", "cortical", "differential", "technetium", "tc-99m dmsa"],
-                "THYROID": ["thyroid", "i-131", "tc-99m", "pertechnetate", "uptake", "thyroid scan"],
-                "HIDA": ["hida", "hepatobiliary", "gallbladder", "liver", "biliary", "cholescintigraphy"],
-                "MAG3": ["mag3", "renogram", "perfusion", "clearance", "renal function"],
-                "DTPA": ["dtpa", "gfr", "glomerular", "filtration", "kidney function"],
-                "PARATHYROID": ["parathyroid", "sestamibi", "adenoma", "mibi"]
+                "DMSA": ["dmsa", "renal", "kidney", "cortical", "differential"],
+                "THYROID": ["thyroid", "i-131", "tc-99m", "pertechnetate", "uptake"],
+                "HIDA": ["hida", "hepatobiliary", "gallbladder", "liver", "biliary"],
+                "MAG3": ["mag3", "renogram", "perfusion", "clearance"],
+                "DTPA": ["dtpa", "gfr", "glomerular", "filtration"],
+                "BONE": ["bone", "skeletal", "whole body", "mets"],
+                "PARATHYROID": ["parathyroid", "sestamibi", "adenoma"]
             }
             
-            # Check for keywords
+            # Check for keywords in the extracted text
             for scan_type, keywords in scan_keywords.items():
                 if any(keyword in text for keyword in keywords):
-                    print(f"Detected scan type from text: {scan_type}")  # Debug print
+                    print(f"Detected scan type: {scan_type}")
                     return scan_type
-            
-            # Fallback to feature-based detection
+                
+            # If no specific keywords found, try to detect from image features
             if hasattr(self, 'feature_stats'):
-                print("Using feature-based detection")  # Debug print
+                # Use feature patterns to guess scan type
                 mean = self.feature_stats['raw_mean']
                 kurtosis = self.feature_stats['raw_kurtosis']
                 
-                # Enhanced feature-based detection
                 if kurtosis > 2.0 and mean > 0.6:
-                    return "THYROID"
+                    return "THYROID"  # Likely thyroid with hot nodules
                 elif mean < 0.4 and abs(kurtosis) < 1.0:
-                    return "DMSA"
+                    return "DMSA"     # Likely DMSA with reduced function
                 elif kurtosis > 1.5 and mean < 0.3:
-                    return "HIDA"
-                elif kurtosis > 2.5:
-                    return "BONE"
-            
-            print("Warning: Using default scan type")  # Debug print
-            return "BONE"  # Default to BONE if no clear match
-            
+                    return "HIDA"     # Likely HIDA with obstruction
+                
+            print("Warning: Could not detect scan type from text or features")
+            return "UNKNOWN"
+        
         except Exception as e:
-            print(f"Error in scan detection: {e}")  # Debug print
+            print(f"Error detecting scan type: {e}")
             return "UNKNOWN"
 
     def analyze_scan_features(self, scan_type, features, img):
@@ -935,97 +931,8 @@ Primary Finding: {
         kurtosis = stats.kurtosis(features)
         skewness = stats.skew(features)
         
-        if scan_type == "BONE":
-            high_uptake = np.sum(img > 0.7) / img.size * 100
-            low_uptake = np.sum(img < 0.3) / img.size * 100
-            
-            return f"""
-===========================================
-NUCLEAR MEDICINE DEPARTMENT
-Atomic Energy Cancer Hospital
-===========================================
-
-📋 PROCEDURE
------------
-• Study: Whole Body Bone Scan
-• Radiopharmaceutical: Tc-99m MDP
-• Dose: 20-25 mCi
-• Imaging Time: 2-3 hours post injection
-
-📊 ANALYSIS
-----------
-• Quantitative Measurements:
-  - High Uptake Regions: {high_uptake:.1f}%
-  - Low Uptake Regions: {low_uptake:.1f}%
-  - Mean Activity: {mean:.3f}
-  - Distribution (SD): {std:.3f}
-  - Pattern (Kurtosis): {kurtosis:.2f}
-  - Symmetry (Skewness): {skewness:.2f}
-
-🔍 FINDINGS
-----------
-1. Uptake Pattern:
-   - {'Increased' if mean > 0.6 else 'Decreased' if mean < 0.3 else 'Normal'} tracer uptake
-   - Distribution: {'Heterogeneous' if std > 0.2 else 'Homogeneous'}
-   - {'Multiple' if kurtosis > 3.0 else 'Focal' if kurtosis > 2.0 else 'No significant'} areas of increased uptake
-
-2. Specific Areas:
-   - Axial Skeleton: {'Abnormal' if high_uptake > 10 else 'Normal'} uptake
-   - Appendicular Skeleton: {'Abnormal' if std > 0.2 else 'Normal'} distribution
-
-📝 DIAGNOSIS
------------
-{self.generate_bone_diagnosis(high_uptake, kurtosis, mean, std)}
-
-💡 ADVICE
---------
-{self.generate_bone_advice(high_uptake, kurtosis, mean)}
-"""
-
-        elif scan_type == "THYROID":
-            uptake_percentage = np.sum(img > 0.5) / img.size * 100
-            
-            return f"""
-===========================================
-NUCLEAR MEDICINE DEPARTMENT
-Atomic Energy Cancer Hospital
-===========================================
-
-📋 PROCEDURE
------------
-• Study: Thyroid Scan
-• Radiopharmaceutical: {'I-131' if mean > 0.7 else 'Tc-99m'}
-• Dose: {20 if mean > 0.7 else 5} mCi
-• Imaging Time: {'24 hrs' if mean > 0.7 else '20 min'} post administration
-
-📊 ANALYSIS
-----------
-• Quantitative Measurements:
-  - Uptake Percentage: {uptake_percentage:.1f}%
-  - Distribution Index: {std:.3f}
-  - Nodularity Score: {kurtosis:.2f}
-  - Symmetry Index: {skewness:.2f}
-
-🔍 FINDINGS
-----------
-1. Uptake Pattern:
-   - {'Increased' if mean > 0.6 else 'Decreased' if mean < 0.3 else 'Normal'} tracer uptake
-   - Distribution: {'Heterogeneous' if std > 0.2 else 'Homogeneous'}
-   
-2. Nodule Assessment:
-   - {'Hot' if mean > 0.7 else 'Cold' if mean < 0.3 else 'No significant'} nodules detected
-   - Pattern: {'Multinodular' if kurtosis > 3.0 else 'Solitary' if kurtosis > 2.0 else 'Normal'}
-
-📝 DIAGNOSIS
------------
-{self.generate_thyroid_diagnosis(uptake_percentage, mean, kurtosis)}
-
-💡 ADVICE
---------
-{self.generate_thyroid_advice(mean, kurtosis)}
-"""
-
-        elif scan_type == "DMSA":
+        if scan_type == "DMSA":
+            # Calculate differential function
             left_half = img[:, :img.shape[1]//2]
             right_half = img[:, img.shape[1]//2:]
             left_counts = np.sum(left_half)
@@ -1035,103 +942,91 @@ Atomic Energy Cancer Hospital
             right_percent = (right_counts/total_counts) * 100
             
             return f"""
-===========================================
-NUCLEAR MEDICINE DEPARTMENT
-Atomic Energy Cancer Hospital
-===========================================
+🔍 DMSA RENAL SCAN ANALYSIS
+==========================
 
-📋 PROCEDURE
------------
-• Study: DMSA Renal Cortical Scan
-• Radiopharmaceutical: Tc-99m DMSA
-• Dose: 5 mCi
-• Imaging Time: 3 hours post injection
-
-📊 ANALYSIS
-----------
+📊 QUANTITATIVE PARAMETERS
+------------------------
 • Split Function:
-  - Left Kidney: {left_percent:.1f}%
-  - Right Kidney: {right_percent:.1f}%
+  - Left Kidney: {left_percent:.1f}% (Normal: 45-55%)
+  - Right Kidney: {right_percent:.1f}% (Normal: 45-55%)
   - Differential: {abs(left_percent - right_percent):.1f}%
 
-🔍 FINDINGS
-----------
-1. Differential Function:
-   - Left Kidney: {'Normal' if 45 <= left_percent <= 55 else 'Abnormal'}
-   - Right Kidney: {'Normal' if 45 <= right_percent <= 55 else 'Abnormal'}
+• Cortical Assessment:
+  - Mean Uptake: {mean:.3f} ({'Normal' if 0.4 < mean < 0.6 else 'Abnormal'})
+  - Uniformity: {std:.3f} ({'Homogeneous' if std < 0.2 else 'Non-homogeneous'})
+  - Focal Defects: {'Present' if kurtosis > 2.0 else 'Absent'} (Kurtosis: {kurtosis:.2f})
+  - Symmetry: {'Asymmetric' if abs(skewness) > 0.5 else 'Symmetric'} (Skewness: {skewness:.2f})
 
-2. Cortical Assessment:
-   - Uptake: {'Normal' if 0.4 < mean < 0.6 else 'Abnormal'}
-   - Pattern: {'Homogeneous' if std < 0.2 else 'Non-homogeneous'}
-   - Defects: {'Present' if kurtosis > 2.0 else 'Absent'}
-
-📝 DIAGNOSIS
------------
-{self.generate_dmsa_diagnosis(left_percent, right_percent, mean, kurtosis)}
-
-💡 ADVICE
---------
-{self.generate_dmsa_advice(left_percent, right_percent, kurtosis)}
+🎯 INTERPRETATION
+---------------
+• Function: {
+    'Normal bilateral function' if 45 <= left_percent <= 55 and 45 <= right_percent <= 55
+    else 'Asymmetric renal function - requires correlation'
+}
+• Cortical Pattern: {
+    'Normal cortical uptake' if mean > 0.4 and std < 0.2
+    else 'Abnormal cortical pattern - possible scarring/defects'
+}
 """
 
-    def generate_bone_diagnosis(self, high_uptake, kurtosis, mean, std):
-        if high_uptake > 10 and kurtosis > 3.0:
-            return "Multiple focal lesions suspicious for metastatic disease"
-        elif high_uptake > 5 and kurtosis > 2.0:
-            return "Focal areas of increased uptake - possible degenerative changes vs metastatic disease"
-        elif std > 0.2 and mean < 0.6:
-            return "Pattern consistent with degenerative changes"
-        else:
-            return "Normal bone scan without evidence of metastatic disease"
+        elif scan_type == "THYROID":
+            return f"""
+🔍 THYROID SCAN ANALYSIS
+======================
 
-    def generate_bone_advice(self, high_uptake, kurtosis, mean):
-        advice = []
-        if high_uptake > 10 and kurtosis > 3.0:
-            advice.extend([
-                "1. Correlation with other imaging modalities (CT/MRI)",
-                "2. Serum tumor markers",
-                "3. Follow-up scan in 3-6 months"
-            ])
-        elif high_uptake > 5 or kurtosis > 2.0:
-            advice.extend([
-                "1. Correlation with radiographs/CT",
-                "2. Clinical correlation for degenerative changes",
-                "3. Follow-up if clinically indicated"
-            ])
-        else:
-            advice.extend([
-                "1. No immediate follow-up required",
-                "2. Routine follow-up as per clinical protocol"
-            ])
-        return "\n".join(advice)
+📊 QUANTITATIVE PARAMETERS
+------------------------
+• Uptake Assessment:
+  - Mean Uptake: {mean:.3f} ({'Increased' if mean > 0.6 else 'Decreased' if mean < 0.3 else 'Normal'})
+  - Distribution: {std:.3f} ({'Heterogeneous' if std > 0.2 else 'Homogeneous'})
+  - Pattern: {'Nodular' if kurtosis > 2.0 else 'Diffuse'} (Kurtosis: {kurtosis:.2f})
+  - Symmetry: {'Asymmetric' if abs(skewness) > 0.5 else 'Symmetric'} (Skewness: {skewness:.2f})
 
-    def generate_thyroid_diagnosis(self, uptake_percentage, mean, kurtosis):
-        if uptake_percentage > 4.0 and mean > 0.7:
-            return "Toxic nodule(s)/Graves disease"
-        elif uptake_percentage < 0.5 and mean < 0.3:
-            return "Cold nodule(s) - requires correlation"
-        else:
-            return "Normal thyroid uptake pattern"
+🎯 INTERPRETATION
+---------------
+• Primary Finding: {
+    'Toxic nodule(s)/Graves disease' if mean > 0.6 and kurtosis > 2.0
+    else 'Cold nodule(s) - requires correlation' if mean < 0.3 and kurtosis > 2.0
+    else 'Normal thyroid uptake pattern'
+}
+• Pattern Type: {
+    'Multinodular' if kurtosis > 3.0
+    else 'Solitary nodule' if kurtosis > 2.0
+    else 'Diffuse uptake'
+}
+"""
 
-    def generate_thyroid_advice(self, mean, kurtosis):
-        if mean > 0.7:
-            return "Immediate clinical correlation recommended"
-        elif mean < 0.3:
-            return "Further evaluation recommended"
-        else:
-            return "No immediate follow-up required"
+        elif scan_type == "HIDA":
+            return f"""
+🔍 HEPATOBILIARY SCAN ANALYSIS
+===========================
 
-    def generate_dmsa_diagnosis(self, left_percent, right_percent, mean, kurtosis):
-        if left_percent < 0.4 or right_percent < 0.4:
-            return "Abnormal cortical pattern - possible scarring/defects"
-        else:
-            return "Normal cortical uptake"
+📊 QUANTITATIVE PARAMETERS
+------------------------
+• Hepatic Phase:
+  - Extraction: {mean:.3f} ({'Normal' if mean > 0.4 else 'Reduced'})
+  - Pattern: {std:.3f} ({'Heterogeneous' if std > 0.2 else 'Homogeneous'})
+  
+• Biliary Drainage:
+  - Flow Pattern: {'Delayed' if kurtosis > 2.0 else 'Normal'} (Kurtosis: {kurtosis:.2f})
+  - Transit: {'Abnormal' if abs(skewness) > 0.5 else 'Normal'} (Skewness: {skewness:.2f})
 
-    def generate_dmsa_advice(self, left_percent, right_percent, kurtosis):
-        if left_percent < 0.4 or right_percent < 0.4:
-            return "Further evaluation recommended"
+🎯 INTERPRETATION
+---------------
+• Primary Finding: {
+    'Biliary obstruction pattern' if kurtosis > 2.0 and mean < 0.3
+    else 'Hepatocellular dysfunction' if mean < 0.4
+    else 'Normal hepatobiliary function'
+}
+• Flow Assessment: {
+    'Delayed biliary drainage' if kurtosis > 2.0
+    else 'Patent biliary tree'
+}
+"""
+
         else:
-            return "No additional imaging required at this time"
+            return f"Unknown scan type: {scan_type}"
 
 def uz():
     obj = practice()

@@ -105,65 +105,45 @@ def generate_test_specific_stats(features, scan_type):
 
 def process_image(image, doctor_name):
     """Process the uploaded image and generate test-specific report"""
-    try:
-        # Check if image is provided
-        if image is None:
-            return "Please upload an image first.", None, None, None
-        
-        # Check if doctor name is provided
-        if not doctor_name:
-            return "Please enter doctor's name.", None, None, None
-            
-        obj = practice()
-        
-        # Create uploads directory if it doesn't exist
-        os.makedirs("uploads", exist_ok=True)
-        
-        try:
-            # Save uploaded image
-            image_path = "uploads/temp_image.jpg"
-            if isinstance(image, np.ndarray):
-                # Convert numpy array to PIL Image
-                Image.fromarray(image).save(image_path)
-            else:
-                image.save(image_path)
-            obj.image_path = image_path
-            
-            # Process and convert to grayscale
-            img_gray = obj.load_image(image_path)
-            normalized_img = obj.normalize_image(img_gray)
-            
-            # Extract text from image to determine scan type
-            scan_type = obj.detect_scan_type(image)
-            
-            # Create grayscale plot
-            fig_gray = plt.figure(figsize=(6, 6))
-            plt.imshow(normalized_img, cmap='gray')
-            plt.axis('off')
-            plt.title(f"{scan_type} Analysis")
-            
-            # Extract features and analyze based on scan type
-            tensor = obj.preprocess_image()
-            features = obj.extract_features(tensor)
-            
-            # Generate test-specific analysis
-            analysis = obj.analyze_scan_features(scan_type, features, normalized_img)
-            
-            # Create feature visualization with test-specific thresholds
-            fig_features = create_feature_plots(features, scan_type)
-            
-            # Save report with test-specific name
-            downloads_path = str(Path.home() / "Downloads" / "Image")
-            os.makedirs(downloads_path, exist_ok=True)
-            report_path = os.path.join(downloads_path, f"{scan_type}_report_{doctor_name}.txt")
-            
-            return analysis, fig_gray, fig_features, report_path
-            
-        except Exception as e:
-            return f"Error processing image: {str(e)}", None, None, None
-            
-    except Exception as e:
-        return f"Error: {str(e)}", None, None, None
+    obj = practice()
+    
+    # Create uploads directory if it doesn't exist
+    os.makedirs("uploads", exist_ok=True)
+    
+    # Save uploaded image
+    image_path = "uploads/temp_image.jpg"
+    image.save(image_path)
+    obj.image_path = image_path
+    
+    # Process and convert to grayscale
+    img_gray = obj.load_image(image_path)
+    normalized_img = obj.normalize_image(img_gray)
+    
+    # Extract text from image to determine scan type
+    scan_type = obj.detect_scan_type(image)
+    
+    # Create grayscale plot
+    fig_gray = plt.figure(figsize=(6, 6))
+    plt.imshow(normalized_img, cmap='gray')
+    plt.axis('off')
+    plt.title(f"{scan_type} Analysis")
+    
+    # Extract features and analyze based on scan type
+    tensor = obj.preprocess_image()
+    features = obj.extract_features(tensor)
+    
+    # Generate test-specific analysis
+    analysis = obj.analyze_scan_features(scan_type, features, normalized_img)
+    
+    # Create feature visualization with test-specific thresholds
+    fig_features = create_feature_plots(features, scan_type)
+    
+    # Save report with test-specific name
+    downloads_path = str(Path.home() / "Downloads" / "Image")
+    os.makedirs(downloads_path, exist_ok=True)
+    report_path = os.path.join(downloads_path, f"{scan_type}_report_{doctor_name}.txt")
+    
+    return analysis, fig_gray, fig_features, report_path
 
 def save_report(report, save_path):
     """Save the report to the specified path"""
@@ -176,24 +156,16 @@ def main():
     with gr.Blocks(title="MEDICAL IMAGE ANALYSIS SYSTEM") as iface:
         gr.Markdown("""
             <div style='text-align: center'>
-                <h1 style='font-size: 2.5em; font-weight: bold; color=blue>MEDICAL IMAGE ANALYSIS SYSTEM</h1>
-                <h2 style='font-size: 1.5em; font-weight: bold; color=green>ATOMIC ENERGY CANCER HOSPITAL (AECHs)</h2>
+                <h1 style='font-size: 2.5em; font-weight: bold'>MEDICAL IMAGE ANALYSIS SYSTEM</h1>
+                <h2 style='font-size: 1.5em; font-weight: bold'>ATOMIC ENERGY CANCER HOSPITAL</h2>
                 <p style='font-size: 1em; color: gray'>AI-Assisted Nuclear Medicine Analysis</p>
             </div>
         """)
         
         with gr.Row():
             with gr.Column():
-                # Fixed Image component initialization
-                input_image = gr.Image(
-                    type="numpy",
-                    label="Upload Medical Image",
-                )
-                doctor_name = gr.Textbox(
-                    label="Doctor's Name",
-                    placeholder="Enter doctor's name"
-                )
-                process_btn = gr.Button("Process Image", variant="primary")
+                input_image = gr.Image(type="pil", image_mode="L", label="Upload Medical Image")
+                doctor_name = gr.Textbox(label="Doctor's Name")
             
             with gr.Column():
                 grayscale_output = gr.Plot(label="Processed Image")
@@ -207,11 +179,11 @@ def main():
         # Footer
         gr.Markdown("""
             <div style='text-align: right; margin-top: 20px'>
-                <p style='font-size: 12px; font-style: italic'>@ 2025(AECHs) Pakistan Atomic Energy Commission</p>
+                <p style='font-size: 12px; font-style: italic'>@Pakistan Atomic Energy Commission</p>
             </div>
         """)
         
-        # Handle processing with error messages
+        # Handle processing
         process_btn.click(
             process_image,
             inputs=[input_image, doctor_name],
@@ -225,11 +197,7 @@ def main():
             outputs=save_status
         )
     
-    # Launch with error handling
-    try:
-        iface.launch(share=True)
-    except Exception as e:
-        print(f"Error launching interface: {e}")
+    iface.launch(share=True)
 
 if __name__ == "__main__":
     main() 
