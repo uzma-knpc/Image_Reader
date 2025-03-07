@@ -8,6 +8,13 @@ import os
 import shutil
 from pathlib import Path
 import datetime
+import multiprocessing
+import concurrent.futures
+import torch
+
+# Set optimal number of CPU threads globally
+NUM_CPU_THREADS = multiprocessing.cpu_count()
+torch.set_num_threads(NUM_CPU_THREADS)
 
 def create_feature_plots(features, scan_type):
     """Create test-specific feature visualization"""
@@ -49,7 +56,11 @@ def create_feature_plots(features, scan_type):
             "normal_uptake": (0.4, 0.6),
             "metastasis": 0.7,
             "metabolic": 0.3
-       
+        },
+        "BONE HEAD SCAN": {
+            "normal_uptake": (0.4, 0.6),
+            "metastasis": 0.7,
+            "metabolic": 0.3
         }
     }
     
@@ -89,25 +100,7 @@ def generate_test_specific_stats(features, scan_type):
     kurtosis = stats.kurtosis(features)
     skewness = stats.skew(features)
     
-    # Normalize scan type
-    scan_type = scan_type.upper().replace(" ", "_")
-    
-    # Keywords that indicate a bone scan
-    bone_keywords = ["BONE", "SKELETON", "MDP", "SPOT", "WHOLE_BODY", "WHOLEBODY"]
-    
-    # Check if any bone keyword is in the scan type
-    if any(keyword in scan_type for keyword in bone_keywords):
-        return f"""Bone Scan Statistics:
-• Uptake: {mean:.3f}
-  → {'Increased' if mean > 0.6 else 'Decreased' if mean < 0.3 else 'Normal'}
-• Distribution: {std:.3f}
-  → {'Heterogeneous' if std > 0.25 else 'Homogeneous'}
-• Lesions: {kurtosis:.3f}
-  → {'Multiple' if kurtosis > 2.0 else 'Single' if kurtosis > 1.5 else 'None'}
-• Pattern: {skewness:.3f}
-  → {'Asymmetric' if abs(skewness) > 0.5 else 'Symmetric'} distribution"""
-    
-    elif scan_type == "DMSA":
+    if scan_type == "DMSA":
         return f"""DMSA Scan Statistics:
 • Mean Intensity: {mean:.3f} 
   → {'Normal' if 0.4 < mean < 0.6 else 'Abnormal'} kidney function
@@ -173,29 +166,19 @@ def generate_test_specific_stats(features, scan_type):
 • Symmetry: {skewness:.3f}
   → {'Asymmetric' if abs(skewness) > 0.5 else 'Symmetric'} function"""
     
+    elif scan_type == "WHOLEBODY_BONE":
+        return f"""Whole Body Bone Scan Statistics:
+• Uptake: {mean:.3f}
+  → {'Increased' if mean > 0.6 else 'Decreased' if mean < 0.3 else 'Normal'}
+• Distribution: {std:.3f}
+  → {'Heterogeneous' if std > 0.25 else 'Homogeneous'}
+• Lesions: {kurtosis:.3f}
+  → {'Multiple' if kurtosis > 2.0 else 'Single' if kurtosis > 1.5 else 'None'}
+• Pattern: {skewness:.3f}
+  → {'Asymmetric' if abs(skewness) > 0.5 else 'Symmetric'} distribution"""
+    
     else:
         return "Unknown scan type"
-
-def save_uploaded_image(image):
-    """Save uploaded image with proper error handling"""
-    try:
-        os.makedirs("uploads", exist_ok=True)
-        image_path = "uploads/temp_image.jpg"
-        
-        if isinstance(image, np.ndarray):
-            # Convert numpy array to PIL Image
-            img = Image.fromarray(image.astype('uint8'))
-            img.save(image_path, format='JPEG', quality=95)
-        elif isinstance(image, Image.Image):
-            # Save PIL Image directly
-            image.save(image_path, format='JPEG', quality=95)
-        else:
-            raise ValueError("Unsupported image type")
-            
-        return image_path
-    except Exception as e:
-        print(f"Error saving image: {e}")
-        raise
 
 def process_image(image, doctor_name):
     """Process the uploaded image and generate test-specific report"""
@@ -206,139 +189,63 @@ def process_image(image, doctor_name):
         if not doctor_name:
             return "Please enter doctor's name.", None, None, None
         
-        obj = practice()
-        
-        # Save image with proper error handling
-        try:
-            image_path = save_uploaded_image(image)
-            obj.image_path = image_path
-        except Exception as e:
-            return f"Error saving image: {str(e)}", None, None, None
-        
-        # Load and process image
-        try:
-            img_gray = obj.load_image(image_path)
-            normalized_img = obj.normalize_image(img_gray)
-        except Exception as e:
-            return f"Error processing image: {str(e)}", None, None, None
+        # Create thread pool for parallel processing    
+        with concurrent.futures.ThreadPoolExecutor(max_workers=NUM_CPU_THREADS) as executor:
+            obj = practice()
             
-        # Extract information
-        try:
-            extracted_text = obj.extract_text_from_image(image)
-            patient_details = obj.extract_patient_details(image)
-            scan_type = obj.detect_scan_type(image)
+            # Parallel tasks
+            futures = {
+                'save_image': executor.submit(save_uploaded_image, image),
+                'process': executor.submit(obj.load_image, "uploads/temp_image.jpg"),
+                'extract_text': executor.submit(obj.extract_text_from_image, image),
+                'extract_patient': executor.submit(obj.extract_patient_details, image),
+                'detect_scan': executor.submit(obj.detect_scan_type, image)
+            }
+            
+            # Get results
+            img_gray = futures['process'].result()
+            extracted_text = futures['extract_text'].result()
+            patient_details = futures['extract_patient'].result()
+            scan_type = futures['detect_scan'].result()
             
             # Normalize scan type
             if "BONE" in scan_type.upper() or "SPOT" in scan_type.upper():
                 scan_type = "WHOLEBODY_BONE" if "WHOLE" in scan_type.upper() or "BODY" in scan_type.upper() else "BONE"
             
-            print(f"Detected scan type: {scan_type}")
-        except Exception as e:
-            return f"Error extracting information: {str(e)}", None, None, None
-        
-        # Feature extraction and analysis
-        try:
+            # Parallel feature extraction and analysis
+            normalized_img = obj.normalize_image(img_gray)
             tensor = obj.preprocess_image()
-            features = obj.extract_features(tensor)
             
-            # Calculate metrics
-            metrics = {
-                'mean': np.mean(features),
-                'std': np.std(features),
-                'kurtosis': stats.kurtosis(features),
-                'skewness': stats.skew(features)
+            futures = {
+                'features': executor.submit(obj.extract_features, tensor),
+                'analysis': executor.submit(obj.analyze_scan_features, scan_type, None, normalized_img)
             }
             
-            analysis = obj.analyze_scan_features(scan_type, features, normalized_img)
-            procedure_details = get_procedure_details(scan_type)
-        except Exception as e:
-            return f"Error in analysis: {str(e)}", None, None, None
-        
-        # Generate visualizations
-        try:
-            fig_gray = create_grayscale_plot(normalized_img, scan_type)
-            fig_features = create_feature_plots(features, scan_type)
-        except Exception as e:
-            return f"Error creating visualizations: {str(e)}", None, None, None
-        
-        # Format patient details section
-        patient_section = f"""
-👤 PATIENT DETAILS
-----------------
-{extracted_text}"""
-        
-        # Generate report with metrics
-        report = f"""
-===========================================
-AI Driven MEDICAL IMAGE ANALYSIS SYSTEM
-ATOMIC ENERGY CANCER HOSPITAL (AECHs)
-===========================================
-
-📋 SCAN INFORMATION
-----------------
-Study Date: {patient_details.get('date_time', datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))}
-Center: {patient_details.get('center', 'ATOMIC ENERGY MEDICAL CENTER')}
-Equipment: {patient_details.get('manufacturer', 'INFINIA NUCLEAR MEDICINE')}
-Study: {scan_type} Scan
-
-💉 PROCEDURE DETAILS
------------------
-{procedure_details}
-
-{patient_section}
-
-🔍 ANALYSIS
-----------------
-TEST SPECIFIC PARAMETERS:
-{get_test_specific_parameters(scan_type, metrics)}
-
-INTERPRETATION:
-Based on the quantitative analysis of your scan:
-
-The overall activity level shows {metrics['mean']:.2f}, which indicates 
-{
-    'significantly elevated tracer uptake' if metrics['mean'] > 0.6 
-    else 'notably reduced tracer uptake' if metrics['mean'] < 0.3 
-    else 'normal physiological tracer distribution'
-}.
-
-The distribution pattern has a variation of {metrics['std']:.2f}, suggesting a
-{
-    'heterogeneous and irregular' if metrics['std'] > 0.25 
-    else 'homogeneous and uniform'
-} uptake pattern throughout the scanned area.
-
-Analysis of focal areas reveals a kurtosis value of {metrics['kurtosis']:.2f}, indicating
-{
-    'multiple distinct lesions or areas of abnormal uptake' if metrics['kurtosis'] > 2.0
-    else 'a single prominent lesion or focal abnormality' if metrics['kurtosis'] > 1.5
-    else 'no significant focal abnormalities'
-}.
-
-The symmetry assessment shows a skewness of {metrics['skewness']:.2f}, demonstrating
-{
-    'an asymmetric distribution with notable side-to-side differences' if abs(metrics['skewness']) > 0.5
-    else 'a symmetric and balanced distribution pattern'
-}.
-
-IMPRESSION:
-{get_impression(scan_type, metrics)}
-
-===========================================
-REPORTING DETAILS
-===========================================
-Primary Report Generated by: MEDISCAN-AI
-Duty Doctor: Dr. {doctor_name}
-Report Time: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-Scan Type: {scan_type}
-==========================================="""
-        
-        # Save report
-        save_path = save_report_to_paths(report, scan_type, doctor_name)
-        if save_path is None:
-            print("Warning: Could not save report to all locations")
+            features = futures['features'].result()
+            analysis = futures['analysis'].result()
             
-        return report, fig_gray, fig_features, save_path
+            # Generate report components in parallel
+            futures = {
+                'procedure': executor.submit(get_procedure_details, scan_type),
+                'plots': executor.submit(create_feature_plots, features, scan_type)
+            }
+            
+            procedure_details = futures['procedure'].result()
+            fig_features = futures['plots'].result()
+            
+            # Generate report
+            report = generate_report(
+                scan_type, procedure_details, extracted_text, 
+                analysis, doctor_name, patient_details
+            )
+            
+            # Create grayscale visualization
+            fig_gray = create_grayscale_plot(normalized_img, scan_type)
+            
+            # Save report
+            save_path = save_report_to_paths(report, scan_type, doctor_name)
+            
+            return report, fig_gray, fig_features, save_path
             
     except Exception as e:
         print(f"Error in process_image: {e}")
@@ -423,91 +330,6 @@ def get_procedure_details(scan_type):
     
     return procedures.get(scan_type, f"Procedure details not available for {scan_type} scan type")
 
-def create_grayscale_plot(normalized_img, scan_type):
-    fig_gray = plt.figure(figsize=(6, 6))
-    plt.imshow(normalized_img, cmap='gray')
-    plt.axis('off')
-    plt.title(f"{scan_type} Scan")
-    return fig_gray
-
-def save_report_to_paths(report, scan_type, doctor_name):
-    """Save report to multiple locations"""
-    try:
-        # Save to medical_reports.txt in current directory
-        with open("medical_reports.txt", "w", encoding='utf-8') as f:
-            f.write(report)
-
-        # Save to downloads folder
-        downloads_path = str(Path.home() / "Downloads" / "Image")
-        os.makedirs(downloads_path, exist_ok=True)
-        report_path = os.path.join(downloads_path, f"{scan_type}_report_{doctor_name}.txt")
-        
-        with open(report_path, "w", encoding='utf-8') as f:
-            f.write(report)
-        
-        return report_path
-
-    except Exception as e:
-        print(f"Error saving report: {e}")
-        return None
-
-def get_test_specific_parameters(scan_type, metrics):
-    """Generate test-specific parameters based on scan type"""
-    if scan_type == "DMSA":
-        return "\n".join([
-            f"- Counts/s from each kidney: {metrics['mean']:.2f}",
-            f"- Differential Uptake %: {metrics['std'] * 100:.1f}%",
-            f"- Cortical Defects: {'Present' if metrics['kurtosis'] > 2.0 else 'Absent'}",
-            f"- Function Symmetry: {'Unequal' if abs(metrics['skewness']) > 0.5 else 'Equal'}"
-        ])
-    elif scan_type == "THYROID":
-        return "\n".join([
-            f"- Thyroid Uptake %: {metrics['mean'] * 100:.1f}%",
-            f"- Nodule Detection: {'Present' if metrics['std'] > 0.2 else 'Absent'}",
-            f"- Hot/Cold Areas: {'Present' if metrics['kurtosis'] > 2.0 else 'Absent'}",
-            f"- Gland Symmetry: {'Asymmetric' if abs(metrics['skewness']) > 0.5 else 'Symmetric'}"
-        ])
-    elif scan_type == "HIDA":
-        return "\n".join([
-            f"- Gallbladder Ejection Fraction: {metrics['mean'] * 100:.1f}%",
-            f"- Hepatic Transit Time: {metrics['std'] * 60:.1f} min",
-            f"- Bile Duct Patency: {'Obstructed' if metrics['kurtosis'] > 2.0 else 'Patent'}",
-            f"- Excretion Pattern: {'Delayed' if abs(metrics['skewness']) > 0.5 else 'Normal'}"
-        ])
-    else:  # Default Bone Scan
-        return "\n".join([
-            f"- Overall Uptake: {metrics['mean']:.2f}",
-            f"- Distribution Pattern: {'Heterogeneous' if metrics['std'] > 0.25 else 'Homogeneous'}",
-            f"- Focal Lesions: {'Multiple' if metrics['kurtosis'] > 2.0 else 'Single' if metrics['kurtosis'] > 1.5 else 'None'}",
-            f"- Symmetry: {'Asymmetric' if abs(metrics['skewness']) > 0.5 else 'Symmetric'}"
-        ])
-
-def get_impression(scan_type, metrics):
-    """Generate impression based on scan type"""
-    if scan_type == "DMSA":
-        return "\n".join([
-            f"- Kidney Function: {'Good' if 0.45 < metrics['mean'] < 0.55 else 'Impaired'}",
-            f"- Scarring/Focal Defects: {'Present' if metrics['kurtosis'] > 2.0 else 'Absent'}",
-            f"- Function Distribution: {'Unequal' if abs(metrics['skewness']) > 0.5 else 'Equal'}",
-            f"- Cortical Status: {'Defects Present' if metrics['std'] > 0.2 else 'Normal'}"
-        ])
-    elif scan_type == "THYROID":
-        return "\n".join([
-            f"- Thyroid Status: {'Hyperthyroid' if metrics['mean'] > 0.6 else 'Hypothyroid' if metrics['mean'] < 0.3 else 'Euthyroid'}",
-            f"- Nodular Disease: {'Present' if metrics['std'] > 0.2 else 'Absent'}",
-            f"- Hot/Cold Nodules: {'Present' if metrics['kurtosis'] > 2.0 else 'Absent'}",
-            f"- Toxic Adenoma/Focal Lesion: {'Suspected' if metrics['std'] > 0.25 and metrics['kurtosis'] > 2.0 else 'Not Evident'}"
-        ])
-    elif scan_type == "HIDA":
-        return "\n".join([
-            f"- Gallbladder Function: {'Normal' if 0.4 < metrics['mean'] < 0.6 else 'Abnormal'}",
-            f"- Bile Duct Status: {'Obstructed' if metrics['std'] > 0.2 else 'Patent'}",
-            f"- Bile Excretion: {'Delayed' if metrics['kurtosis'] > 2.0 else 'Normal'}",
-            f"- Bile Leak/Duct Disease: {'Suspected' if metrics['std'] > 0.25 and abs(metrics['skewness']) > 0.5 else 'Not Evident'}"
-        ])
-    else:
-        return f"These findings suggest {'an abnormal scan requiring further clinical correlation' if metrics['mean'] > 0.6 or metrics['std'] > 0.25 or metrics['kurtosis'] > 1.5 else 'a predominantly normal scan pattern'}."
-
 def main():
     # Create Gradio interface
     with gr.Blocks(title="MEDICAL IMAGE ANALYSIS SYSTEM") as iface:
@@ -550,11 +372,44 @@ def main():
             outputs=save_status
         )
     
-    # Basic launch with sharing enabled
+    # Launch with simplified settings
     try:
-        iface.launch(share=True)
+        iface.launch(
+            server_name="0.0.0.0",
+            server_port=7860,
+            share=True
+        )
     except Exception as e:
         print(f"Error launching interface: {e}")
+
+# Helper functions for parallel processing
+def save_uploaded_image(image):
+    os.makedirs("uploads", exist_ok=True)
+    image_path = "uploads/temp_image.jpg"
+    if isinstance(image, np.ndarray):
+        Image.fromarray((image * 255).astype(np.uint8)).save(image_path)
+    else:
+        image.save(image_path)
+    return image_path
+
+def create_grayscale_plot(normalized_img, scan_type):
+    fig_gray = plt.figure(figsize=(6, 6))
+    plt.imshow(normalized_img, cmap='gray')
+    plt.axis('off')
+    plt.title(f"{scan_type} Scan")
+    return fig_gray
+
+def save_report_to_paths(report, scan_type, doctor_name):
+    downloads_path = str(Path.home() / "Downloads" / "Image")
+    os.makedirs(downloads_path, exist_ok=True)
+    report_path = os.path.join(downloads_path, f"{scan_type}_report_{doctor_name}.txt")
+    
+    # Save report to both locations
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        executor.submit(save_report, report, "medical_reports.txt")
+        executor.submit(save_report, report, report_path)
+    
+    return report_path
 
 if __name__ == "__main__":
     main() 

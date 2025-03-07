@@ -1,12 +1,4 @@
 import torch
-import multiprocessing
-import concurrent.futures
-from functools import partial
-# Set the number of threads PyTorch uses
-torch.set_num_threads(4)  # Adjust based on your CPU core count
-# For data loading
-from torch.utils.data import DataLoader
-#dataloader = DataLoader(dataset, batch_size=8, num_workers=4)
 import torch.nn as nn
 import torchvision.models as models
 import torchvision.transforms as transforms
@@ -35,12 +27,6 @@ from dotenv import load_dotenv
 load_dotenv()
 #image_path = './images/thyaemc.jpeg'
 #image_path=os.path(Image_path)
-
-# Set optimal number of CPU threads globally
-NUM_CPU_THREADS = multiprocessing.cpu_count()
-torch.set_num_threads(NUM_CPU_THREADS)
-cv2.setNumThreads(NUM_CPU_THREADS)
-
 class practice:
     def __init__(self):
         # Create necessary directories
@@ -51,7 +37,12 @@ class practice:
         # Initialize model
         self.model = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.DEFAULT)
         self.model.eval()
+        self.normalized_img = None
         self.image_path = None
+        
+        # Save model to models directory
+        model_path = os.path.join("models", "fine_tuned_inception_resnet_v1.pth")
+        torch.save(self.model.state_dict(), model_path)
         
         # Add prompt1 for patient details
         # Add prompt1 for patient details
@@ -83,10 +74,6 @@ class practice:
         self.model_gen = genai.GenerativeModel("gemini-1.5-flash")
         # Remove ONNX initialization
         # self.session = ort.InferenceSession("model.onnx", providers=['CPUExecutionProvider'])
-
-    def __del__(self):
-        # Cleanup
-        pass
 
     def get_file_from_user(self):
         """
@@ -140,11 +127,14 @@ class practice:
         if self.image_path is None:
             raise ValueError("Image path not set")
         
+        # Load and convert to RGB
         image = Image.open(self.image_path).convert('RGB')
         
+        # Define preprocessing with proper normalization
         transform = transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
+            # ImageNet normalization
             transforms.Normalize(
                 mean=[0.485, 0.456, 0.406],
                 std=[0.229, 0.224, 0.225]
@@ -160,26 +150,21 @@ class practice:
             tensor = self.preprocess_image()
         
         with torch.no_grad():
+            # Get features from the model
             features = self.model(tensor)
-            features_np = features.cpu().numpy().flatten()
+            features_np = features.numpy().flatten()
             
-            # Parallel statistics calculation
-            futures = {
-                'mean': np.mean(features_np),
-                'std': np.std(features_np),
-                'skewness': stats.skew(features_np),
-                'kurtosis': stats.kurtosis(features_np),
-                'min': np.min(features_np),
-                'max': np.max(features_np)
-            }
+            # Normalize features to 0-1 range before analysis
+            normalized_features = (features_np - features_np.min()) / (features_np.max() - features_np.min())
             
+            # Store normalized feature values for reporting
             self.feature_stats = {
-                'raw_mean': futures['mean'],
-                'raw_std': futures['std'],
-                'raw_skewness': futures['skewness'],
-                'raw_kurtosis': futures['kurtosis'],
-                'raw_min': futures['min'],
-                'raw_max': futures['max']
+                'raw_mean': np.mean(normalized_features),  # Now will be 0-1
+                'raw_std': np.std(normalized_features),
+                'raw_skewness': stats.skew(normalized_features),
+                'raw_kurtosis': stats.kurtosis(normalized_features),
+                'raw_min': np.min(normalized_features),
+                'raw_max': np.max(normalized_features)
             }
             
             # Print normalized statistics
@@ -191,7 +176,7 @@ class practice:
             print(f"Min: {self.feature_stats['raw_min']:.4f}")  # Will be 0
             print(f"Max: {self.feature_stats['raw_max']:.4f}")  # Will be 1
             
-            return features_np
+            return normalized_features  # Return normalized features
 
     # Function to create image embeddings
     def create_image_embedding(self, image_path=None):
@@ -224,23 +209,32 @@ class practice:
     def normalize_image(self, img):
         """Enhanced image normalization for better quality"""
         try:
+            # Convert to float32
             img = img.astype(np.float32)
             
-            # Parallel image processing
+            # Handle RGB images
             if len(img.shape) == 3:
                 img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-                
+            
+            # Initial normalization to 0-255 range
             img_norm = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX)
             
+            # Apply advanced contrast enhancement
             clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
             img_clahe = clahe.apply(img_norm.astype(np.uint8))
             
-            kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+            # Apply additional sharpening with correct kernel size
+            kernel = np.array([[-1,-1,-1],
+                             [-1, 9,-1],
+                             [-1,-1,-1]])
             img_sharp = cv2.filter2D(img_clahe, -1, kernel)
             
+            # Final normalization to 0-1 range
             normalized = img_sharp.astype(np.float32) / 255.0
             
+            # Store for later use
             self.normalized_img = normalized
+            
             return normalized
             
         except Exception as e:
@@ -380,17 +374,12 @@ class practice:
             
             # Calculate metrics
             metrics = self.calculate_metrics(features, img)
-            if scan_type == ("BONE"):    
-                # Get patient details
-                patient_details = self.extract_patient_details(img)
+            
+            # Get patient details
+            patient_details = self.extract_patient_details(img)
 
             # Test-specific content generation
-            
-                analysis = self.generate_bone_analysis(metrics)
-                findings = self.generate_bone_findings(metrics)
-                diagnosis = self.generate_bone_diagnosis(metrics)
-                advice = self.generate_bone_recommendations(metrics)
-            elif scan_type == "DTPA":
+            if scan_type == "DTPA":
                 analysis = self.generate_dtpa_analysis(metrics)
                 findings = self.generate_dtpa_findings(metrics)
                 diagnosis = self.generate_dtpa_diagnosis(metrics)
@@ -913,7 +902,7 @@ Primary Finding: {
                 "HIDA": ["hida", "hepatobiliary", "gallbladder", "liver", "biliary", "cholescintigraphy"],
                 "MAG3": ["mag3", "renogram", "perfusion", "clearance", "renal function"],
                 "DTPA": ["dtpa", "gfr", "glomerular", "filtration", "kidney function"],
-                "BONE": ["bone","bone scan head", "skeletal", "whole body", "mets", "metastases", "mdp"],
+                "BONE": ["bone", "skeletal", "whole body", "mets", "metastases", "mdp"],
                 "PARATHYROID": ["parathyroid", "sestamibi", "adenoma", "mibi"]
             }
             
@@ -955,13 +944,21 @@ Primary Finding: {
    • Symmetry: {metrics.get('skewness', 0):.2f} ({'Asymmetric' if abs(metrics.get('skewness', 0)) > 0.5 else 'Symmetric'})
 
 2. Regional Assessment:
-   • Uptake Pattern: {'Abnormal' if metrics.get('mean', 0) > 0.6 else 'Normal'} uptake
-   • Distribution: {'Heterogeneous' if metrics.get('std', 0) > 0.25 else 'Homogeneous'} pattern
+   • Axial Skeleton: {'Abnormal' if metrics.get('mean', 0) > 0.6 else 'Normal'} uptake
+   • Appendicular Skeleton: {'Abnormal' if metrics.get('std', 0) > 0.25 else 'Normal'} distribution
    • Focal Lesions: {
        'Multiple lesions present' if metrics.get('kurtosis', 0) > 2.0
        else 'Single lesion present' if metrics.get('kurtosis', 0) > 1.5
        else 'No significant focal lesions'
-   }"""
+   }
+
+3. Pattern Analysis:
+   • Distribution Type: {'Diffuse' if metrics.get('std', 0) < 0.25 else 'Focal'}
+   • Intensity: {'Intense' if metrics.get('mean', 0) > 0.7 
+                else 'Moderate' if metrics.get('mean', 0) > 0.4 
+                else 'Mild'}
+   • Symmetry: {'Symmetric' if abs(metrics.get('skewness', 0)) < 0.5 
+               else 'Asymmetric with ' + ('right' if metrics.get('skewness', 0) > 0 else 'left') + ' predominance'}"""
 
     def generate_bone_findings(self, metrics):
         """Generate bone scan findings"""
@@ -1327,99 +1324,6 @@ Primary Finding: {
         except Exception as e:
             print(f"Error extracting patient ID: {e}")
             return "002421/25"
-
-    def process_and_generate_reports(self, file_paths, titles, doctor_name):
-        """Process multiple images and generate reports"""
-        try:
-            responses = []
-            for file_path, title in zip(file_paths, titles):
-                # Load and process image
-                img_gray = self.load_image(file_path)
-                normalized_img = self.normalize_image(img_gray)
-                
-                # Extract information
-                image = Image.open(file_path)
-                extracted_text = self.extract_text_from_image(image)
-                patient_details = self.extract_patient_details(image)
-                scan_type = self.detect_scan_type(image)
-                
-                # Feature extraction and analysis
-                tensor = self.preprocess_image()
-                features = self.extract_features(tensor)
-                analysis = self.analyze_scan_features(scan_type, features, normalized_img)
-                procedure_details = self.get_procedure_details(scan_type)
-                
-                # Generate report
-                report = f"""
-===========================================
-AI Driven MEDICAL IMAGE ANALYSIS SYSTEM
-ATOMIC ENERGY CANCER HOSPITAL (AECHs)
-===========================================
-
-📋 SCAN INFORMATION
-----------------
-Study Date: {patient_details.get('date_time', datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))}
-Center: {patient_details.get('center', 'ATOMIC ENERGY MEDICAL CENTER')}
-Equipment: {patient_details.get('manufacturer', 'INFINIA NUCLEAR MEDICINE')}
-Study: {scan_type} Scan
-
-💉 PROCEDURE DETAILS
------------------
-{procedure_details}
-
-👤 PATIENT DETAILS
-----------------
-{extracted_text}
-
-🔍 ANALYSIS
-----------------
-{analysis}
-
-===========================================
-REPORTING DETAILS
-===========================================
-Primary Report Generated by: MEDISCAN-AI
-Duty Doctor: Dr. {doctor_name}
-Report Time: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-Scan Type: {scan_type}
-==========================================="""
-                
-                responses.append(report)
-                
-                # Save report
-                report_path = os.path.join("reports", f"{scan_type}_report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
-                os.makedirs("reports", exist_ok=True)
-                with open(report_path, "w", encoding='utf-8') as f:
-                    f.write(report)
-                
-            return responses
-            
-        except Exception as e:
-            print(f"Error processing images: {e}")
-            return []
-
-    def get_procedure_details(self, scan_type):
-        """Return procedure details based on scan type"""
-        procedures = {
-            "DTPA": """
-• Study: DTPA Renal Scan
-• Radiopharmaceutical: Tc-99m DTPA
-• Dose: 5-10 mCi
-• Imaging: Dynamic 20-30 min
-• Views: Posterior""",
-            
-            "PARATHYROID": """
-• Study: Parathyroid Scan
-• Radiopharmaceutical: Tc-99m MIBI
-• Dose: 20-25 mCi
-• Imaging: Early and Delayed (2-3 hrs)
-• Views: Anterior neck""",
-            
-            # ... (rest of the procedures dictionary)
-        }
-        
-        scan_type = scan_type.upper().replace(" ", "_")
-        return procedures.get(scan_type, f"Procedure details not available for {scan_type} scan type")
 
 def uz():
     obj = practice()

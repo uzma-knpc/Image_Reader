@@ -290,7 +290,19 @@ Study: {scan_type} Scan
 🔍 ANALYSIS
 ----------------
 TEST SPECIFIC PARAMETERS:
-{get_test_specific_parameters(scan_type, metrics)}
+{
+    # DMSA Scan
+    f"""- Counts/s from each kidney: {metrics['mean']:.2f}\n- Differential Uptake %: {metrics['std'] * 100:.1f}%\n- Cortical Defects: {'Present' if metrics['kurtosis'] > 2.0 else 'Absent'}\n- Function Symmetry: {'Unequal' if abs(metrics['skewness']) > 0.5 else 'Equal'}""" if scan_type == "DMSA"
+    
+    # Thyroid Scan
+    else f"""- Thyroid Uptake %: {metrics['mean'] * 100:.1f}%\n- Nodule Detection: {'Present' if metrics['std'] > 0.2 else 'Absent'}\n- Hot/Cold Areas: {'Present' if metrics['kurtosis'] > 2.0 else 'Absent'}\n- Gland Symmetry: {'Asymmetric' if abs(metrics['skewness']) > 0.5 else 'Symmetric'}""" if scan_type == "THYROID"
+    
+    # HIDA Scan
+    else f"""- Gallbladder Ejection Fraction: {metrics['mean'] * 100:.1f}%\n- Hepatic Transit Time: {metrics['std'] * 60:.1f} min\n- Bile Duct Patency: {'Obstructed' if metrics['kurtosis'] > 2.0 else 'Patent'}\n- Excretion Pattern: {'Delayed' if abs(metrics['skewness']) > 0.5 else 'Normal'}""" if scan_type == "HIDA"
+    
+    # Default Bone Scan
+    else f"""- Overall Uptake: {metrics['mean']:.2f}\n- Distribution Pattern: {'Heterogeneous' if metrics['std'] > 0.25 else 'Homogeneous'}\n- Focal Lesions: {'Multiple' if metrics['kurtosis'] > 2.0 else 'Single' if metrics['kurtosis'] > 1.5 else 'None'}\n- Symmetry: {'Asymmetric' if abs(metrics['skewness']) > 0.5 else 'Symmetric'}"""
+}
 
 INTERPRETATION:
 Based on the quantitative analysis of your scan:
@@ -322,7 +334,19 @@ The symmetry assessment shows a skewness of {metrics['skewness']:.2f}, demonstra
 }.
 
 IMPRESSION:
-{get_impression(scan_type, metrics)}
+{
+    # DMSA specific impression
+    f"""- Kidney Function: {'Good' if 0.45 < metrics['mean'] < 0.55 else 'Impaired'}\n- Scarring/Focal Defects: {'Present' if metrics['kurtosis'] > 2.0 else 'Absent'}\n- Function Distribution: {'Unequal' if abs(metrics['skewness']) > 0.5 else 'Equal'}\n- Cortical Status: {'Defects Present' if metrics['std'] > 0.2 else 'Normal'}""" if scan_type == "DMSA"
+    
+    # Thyroid specific impression
+    else f"""- Thyroid Status: {'Hyperthyroid' if metrics['mean'] > 0.6 else 'Hypothyroid' if metrics['mean'] < 0.3 else 'Euthyroid'}\n- Nodular Disease: {'Present' if metrics['std'] > 0.2 else 'Absent'}\n- Hot/Cold Nodules: {'Present' if metrics['kurtosis'] > 2.0 else 'Absent'}\n- Toxic Adenoma/Focal Lesion: {'Suspected' if metrics['std'] > 0.25 and metrics['kurtosis'] > 2.0 else 'Not Evident'}""" if scan_type == "THYROID"
+    
+    # HIDA specific impression
+    else f"""- Gallbladder Function: {'Normal' if 0.4 < metrics['mean'] < 0.6 else 'Abnormal'}\n- Bile Duct Status: {'Obstructed' if metrics['std'] > 0.2 else 'Patent'}\n- Bile Excretion: {'Delayed' if metrics['kurtosis'] > 2.0 else 'Normal'}\n- Bile Leak/Duct Disease: {'Suspected' if metrics['std'] > 0.25 and abs(metrics['skewness']) > 0.5 else 'Not Evident'}""" if scan_type == "HIDA"
+    
+    # Default impression
+    else f"""These findings suggest {'an abnormal scan requiring further clinical correlation' if metrics['mean'] > 0.6 or metrics['std'] > 0.25 or metrics['kurtosis'] > 1.5 else 'a predominantly normal scan pattern'}."""
+}
 
 ===========================================
 REPORTING DETAILS
@@ -450,63 +474,6 @@ def save_report_to_paths(report, scan_type, doctor_name):
     except Exception as e:
         print(f"Error saving report: {e}")
         return None
-
-def get_test_specific_parameters(scan_type, metrics):
-    """Generate test-specific parameters based on scan type"""
-    if scan_type == "DMSA":
-        return "\n".join([
-            f"- Counts/s from each kidney: {metrics['mean']:.2f}",
-            f"- Differential Uptake %: {metrics['std'] * 100:.1f}%",
-            f"- Cortical Defects: {'Present' if metrics['kurtosis'] > 2.0 else 'Absent'}",
-            f"- Function Symmetry: {'Unequal' if abs(metrics['skewness']) > 0.5 else 'Equal'}"
-        ])
-    elif scan_type == "THYROID":
-        return "\n".join([
-            f"- Thyroid Uptake %: {metrics['mean'] * 100:.1f}%",
-            f"- Nodule Detection: {'Present' if metrics['std'] > 0.2 else 'Absent'}",
-            f"- Hot/Cold Areas: {'Present' if metrics['kurtosis'] > 2.0 else 'Absent'}",
-            f"- Gland Symmetry: {'Asymmetric' if abs(metrics['skewness']) > 0.5 else 'Symmetric'}"
-        ])
-    elif scan_type == "HIDA":
-        return "\n".join([
-            f"- Gallbladder Ejection Fraction: {metrics['mean'] * 100:.1f}%",
-            f"- Hepatic Transit Time: {metrics['std'] * 60:.1f} min",
-            f"- Bile Duct Patency: {'Obstructed' if metrics['kurtosis'] > 2.0 else 'Patent'}",
-            f"- Excretion Pattern: {'Delayed' if abs(metrics['skewness']) > 0.5 else 'Normal'}"
-        ])
-    else:  # Default Bone Scan
-        return "\n".join([
-            f"- Overall Uptake: {metrics['mean']:.2f}",
-            f"- Distribution Pattern: {'Heterogeneous' if metrics['std'] > 0.25 else 'Homogeneous'}",
-            f"- Focal Lesions: {'Multiple' if metrics['kurtosis'] > 2.0 else 'Single' if metrics['kurtosis'] > 1.5 else 'None'}",
-            f"- Symmetry: {'Asymmetric' if abs(metrics['skewness']) > 0.5 else 'Symmetric'}"
-        ])
-
-def get_impression(scan_type, metrics):
-    """Generate impression based on scan type"""
-    if scan_type == "DMSA":
-        return "\n".join([
-            f"- Kidney Function: {'Good' if 0.45 < metrics['mean'] < 0.55 else 'Impaired'}",
-            f"- Scarring/Focal Defects: {'Present' if metrics['kurtosis'] > 2.0 else 'Absent'}",
-            f"- Function Distribution: {'Unequal' if abs(metrics['skewness']) > 0.5 else 'Equal'}",
-            f"- Cortical Status: {'Defects Present' if metrics['std'] > 0.2 else 'Normal'}"
-        ])
-    elif scan_type == "THYROID":
-        return "\n".join([
-            f"- Thyroid Status: {'Hyperthyroid' if metrics['mean'] > 0.6 else 'Hypothyroid' if metrics['mean'] < 0.3 else 'Euthyroid'}",
-            f"- Nodular Disease: {'Present' if metrics['std'] > 0.2 else 'Absent'}",
-            f"- Hot/Cold Nodules: {'Present' if metrics['kurtosis'] > 2.0 else 'Absent'}",
-            f"- Toxic Adenoma/Focal Lesion: {'Suspected' if metrics['std'] > 0.25 and metrics['kurtosis'] > 2.0 else 'Not Evident'}"
-        ])
-    elif scan_type == "HIDA":
-        return "\n".join([
-            f"- Gallbladder Function: {'Normal' if 0.4 < metrics['mean'] < 0.6 else 'Abnormal'}",
-            f"- Bile Duct Status: {'Obstructed' if metrics['std'] > 0.2 else 'Patent'}",
-            f"- Bile Excretion: {'Delayed' if metrics['kurtosis'] > 2.0 else 'Normal'}",
-            f"- Bile Leak/Duct Disease: {'Suspected' if metrics['std'] > 0.25 and abs(metrics['skewness']) > 0.5 else 'Not Evident'}"
-        ])
-    else:
-        return f"These findings suggest {'an abnormal scan requiring further clinical correlation' if metrics['mean'] > 0.6 or metrics['std'] > 0.25 or metrics['kurtosis'] > 1.5 else 'a predominantly normal scan pattern'}."
 
 def main():
     # Create Gradio interface

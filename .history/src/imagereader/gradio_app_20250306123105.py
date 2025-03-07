@@ -89,25 +89,7 @@ def generate_test_specific_stats(features, scan_type):
     kurtosis = stats.kurtosis(features)
     skewness = stats.skew(features)
     
-    # Normalize scan type
-    scan_type = scan_type.upper().replace(" ", "_")
-    
-    # Keywords that indicate a bone scan
-    bone_keywords = ["BONE", "SKELETON", "MDP", "SPOT", "WHOLE_BODY", "WHOLEBODY"]
-    
-    # Check if any bone keyword is in the scan type
-    if any(keyword in scan_type for keyword in bone_keywords):
-        return f"""Bone Scan Statistics:
-• Uptake: {mean:.3f}
-  → {'Increased' if mean > 0.6 else 'Decreased' if mean < 0.3 else 'Normal'}
-• Distribution: {std:.3f}
-  → {'Heterogeneous' if std > 0.25 else 'Homogeneous'}
-• Lesions: {kurtosis:.3f}
-  → {'Multiple' if kurtosis > 2.0 else 'Single' if kurtosis > 1.5 else 'None'}
-• Pattern: {skewness:.3f}
-  → {'Asymmetric' if abs(skewness) > 0.5 else 'Symmetric'} distribution"""
-    
-    elif scan_type == "DMSA":
+    if scan_type == "DMSA":
         return f"""DMSA Scan Statistics:
 • Mean Intensity: {mean:.3f} 
   → {'Normal' if 0.4 < mean < 0.6 else 'Abnormal'} kidney function
@@ -172,6 +154,17 @@ def generate_test_specific_stats(features, scan_type):
   → {'Delayed' if kurtosis > 2.0 else 'Normal'} excretion
 • Symmetry: {skewness:.3f}
   → {'Asymmetric' if abs(skewness) > 0.5 else 'Symmetric'} function"""
+    
+    elif scan_type == "WHOLEBODY_BONE":
+        return f"""Whole Body Bone Scan Statistics:
+• Uptake: {mean:.3f}
+  → {'Increased' if mean > 0.6 else 'Decreased' if mean < 0.3 else 'Normal'}
+• Distribution: {std:.3f}
+  → {'Heterogeneous' if std > 0.25 else 'Homogeneous'}
+• Lesions: {kurtosis:.3f}
+  → {'Multiple' if kurtosis > 2.0 else 'Single' if kurtosis > 1.5 else 'None'}
+• Pattern: {skewness:.3f}
+  → {'Asymmetric' if abs(skewness) > 0.5 else 'Symmetric'} distribution"""
     
     else:
         return "Unknown scan type"
@@ -240,15 +233,6 @@ def process_image(image, doctor_name):
         try:
             tensor = obj.preprocess_image()
             features = obj.extract_features(tensor)
-            
-            # Calculate metrics
-            metrics = {
-                'mean': np.mean(features),
-                'std': np.std(features),
-                'kurtosis': stats.kurtosis(features),
-                'skewness': stats.skew(features)
-            }
-            
             analysis = obj.analyze_scan_features(scan_type, features, normalized_img)
             procedure_details = get_procedure_details(scan_type)
         except Exception as e:
@@ -267,7 +251,7 @@ def process_image(image, doctor_name):
 ----------------
 {extracted_text}"""
         
-        # Generate report with metrics
+        # Generate report
         report = f"""
 ===========================================
 AI Driven MEDICAL IMAGE ANALYSIS SYSTEM
@@ -289,40 +273,7 @@ Study: {scan_type} Scan
 
 🔍 ANALYSIS
 ----------------
-TEST SPECIFIC PARAMETERS:
-{get_test_specific_parameters(scan_type, metrics)}
-
-INTERPRETATION:
-Based on the quantitative analysis of your scan:
-
-The overall activity level shows {metrics['mean']:.2f}, which indicates 
-{
-    'significantly elevated tracer uptake' if metrics['mean'] > 0.6 
-    else 'notably reduced tracer uptake' if metrics['mean'] < 0.3 
-    else 'normal physiological tracer distribution'
-}.
-
-The distribution pattern has a variation of {metrics['std']:.2f}, suggesting a
-{
-    'heterogeneous and irregular' if metrics['std'] > 0.25 
-    else 'homogeneous and uniform'
-} uptake pattern throughout the scanned area.
-
-Analysis of focal areas reveals a kurtosis value of {metrics['kurtosis']:.2f}, indicating
-{
-    'multiple distinct lesions or areas of abnormal uptake' if metrics['kurtosis'] > 2.0
-    else 'a single prominent lesion or focal abnormality' if metrics['kurtosis'] > 1.5
-    else 'no significant focal abnormalities'
-}.
-
-The symmetry assessment shows a skewness of {metrics['skewness']:.2f}, demonstrating
-{
-    'an asymmetric distribution with notable side-to-side differences' if abs(metrics['skewness']) > 0.5
-    else 'a symmetric and balanced distribution pattern'
-}.
-
-IMPRESSION:
-{get_impression(scan_type, metrics)}
+{analysis}
 
 ===========================================
 REPORTING DETAILS
@@ -451,63 +402,6 @@ def save_report_to_paths(report, scan_type, doctor_name):
         print(f"Error saving report: {e}")
         return None
 
-def get_test_specific_parameters(scan_type, metrics):
-    """Generate test-specific parameters based on scan type"""
-    if scan_type == "DMSA":
-        return "\n".join([
-            f"- Counts/s from each kidney: {metrics['mean']:.2f}",
-            f"- Differential Uptake %: {metrics['std'] * 100:.1f}%",
-            f"- Cortical Defects: {'Present' if metrics['kurtosis'] > 2.0 else 'Absent'}",
-            f"- Function Symmetry: {'Unequal' if abs(metrics['skewness']) > 0.5 else 'Equal'}"
-        ])
-    elif scan_type == "THYROID":
-        return "\n".join([
-            f"- Thyroid Uptake %: {metrics['mean'] * 100:.1f}%",
-            f"- Nodule Detection: {'Present' if metrics['std'] > 0.2 else 'Absent'}",
-            f"- Hot/Cold Areas: {'Present' if metrics['kurtosis'] > 2.0 else 'Absent'}",
-            f"- Gland Symmetry: {'Asymmetric' if abs(metrics['skewness']) > 0.5 else 'Symmetric'}"
-        ])
-    elif scan_type == "HIDA":
-        return "\n".join([
-            f"- Gallbladder Ejection Fraction: {metrics['mean'] * 100:.1f}%",
-            f"- Hepatic Transit Time: {metrics['std'] * 60:.1f} min",
-            f"- Bile Duct Patency: {'Obstructed' if metrics['kurtosis'] > 2.0 else 'Patent'}",
-            f"- Excretion Pattern: {'Delayed' if abs(metrics['skewness']) > 0.5 else 'Normal'}"
-        ])
-    else:  # Default Bone Scan
-        return "\n".join([
-            f"- Overall Uptake: {metrics['mean']:.2f}",
-            f"- Distribution Pattern: {'Heterogeneous' if metrics['std'] > 0.25 else 'Homogeneous'}",
-            f"- Focal Lesions: {'Multiple' if metrics['kurtosis'] > 2.0 else 'Single' if metrics['kurtosis'] > 1.5 else 'None'}",
-            f"- Symmetry: {'Asymmetric' if abs(metrics['skewness']) > 0.5 else 'Symmetric'}"
-        ])
-
-def get_impression(scan_type, metrics):
-    """Generate impression based on scan type"""
-    if scan_type == "DMSA":
-        return "\n".join([
-            f"- Kidney Function: {'Good' if 0.45 < metrics['mean'] < 0.55 else 'Impaired'}",
-            f"- Scarring/Focal Defects: {'Present' if metrics['kurtosis'] > 2.0 else 'Absent'}",
-            f"- Function Distribution: {'Unequal' if abs(metrics['skewness']) > 0.5 else 'Equal'}",
-            f"- Cortical Status: {'Defects Present' if metrics['std'] > 0.2 else 'Normal'}"
-        ])
-    elif scan_type == "THYROID":
-        return "\n".join([
-            f"- Thyroid Status: {'Hyperthyroid' if metrics['mean'] > 0.6 else 'Hypothyroid' if metrics['mean'] < 0.3 else 'Euthyroid'}",
-            f"- Nodular Disease: {'Present' if metrics['std'] > 0.2 else 'Absent'}",
-            f"- Hot/Cold Nodules: {'Present' if metrics['kurtosis'] > 2.0 else 'Absent'}",
-            f"- Toxic Adenoma/Focal Lesion: {'Suspected' if metrics['std'] > 0.25 and metrics['kurtosis'] > 2.0 else 'Not Evident'}"
-        ])
-    elif scan_type == "HIDA":
-        return "\n".join([
-            f"- Gallbladder Function: {'Normal' if 0.4 < metrics['mean'] < 0.6 else 'Abnormal'}",
-            f"- Bile Duct Status: {'Obstructed' if metrics['std'] > 0.2 else 'Patent'}",
-            f"- Bile Excretion: {'Delayed' if metrics['kurtosis'] > 2.0 else 'Normal'}",
-            f"- Bile Leak/Duct Disease: {'Suspected' if metrics['std'] > 0.25 and abs(metrics['skewness']) > 0.5 else 'Not Evident'}"
-        ])
-    else:
-        return f"These findings suggest {'an abnormal scan requiring further clinical correlation' if metrics['mean'] > 0.6 or metrics['std'] > 0.25 or metrics['kurtosis'] > 1.5 else 'a predominantly normal scan pattern'}."
-
 def main():
     # Create Gradio interface
     with gr.Blocks(title="MEDICAL IMAGE ANALYSIS SYSTEM") as iface:
@@ -550,11 +444,19 @@ def main():
             outputs=save_status
         )
     
-    # Basic launch with sharing enabled
+    # Launch with secure HTTPS settings
     try:
-        iface.launch(share=True)
+        iface.launch(
+            server_name="localhost",
+            server_port=7860,
+            ssl_certfile="cert.pem",
+            ssl_keyfile="key.pem",
+            ssl_verify=True,
+            show_error=True,
+            quiet=False
+        )
     except Exception as e:
-        print(f"Error launching interface: {e}")
+        print(f"Error launching secure interface: {e}")
 
 if __name__ == "__main__":
     main() 

@@ -43,15 +43,27 @@ cv2.setNumThreads(NUM_CPU_THREADS)
 
 class practice:
     def __init__(self):
+        # Initialize thread pool
+        self.thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=NUM_CPU_THREADS)
+        
+        # Set device
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        
         # Create necessary directories
         os.makedirs("uploads", exist_ok=True)
         os.makedirs("temp", exist_ok=True)
         os.makedirs("models", exist_ok=True)
         
-        # Initialize model
+        # Initialize model and move to device
         self.model = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.DEFAULT)
+        self.model = self.model.to(self.device)
         self.model.eval()
+        self.normalized_img = None
         self.image_path = None
+        
+        # Save model to models directory
+        model_path = os.path.join("models", "fine_tuned_inception_resnet_v1.pth")
+        torch.save(self.model.state_dict(), model_path)
         
         # Add prompt1 for patient details
         # Add prompt1 for patient details
@@ -86,7 +98,7 @@ class practice:
 
     def __del__(self):
         # Cleanup
-        pass
+        self.thread_pool.shutdown()
 
     def get_file_from_user(self):
         """
@@ -140,7 +152,10 @@ class practice:
         if self.image_path is None:
             raise ValueError("Image path not set")
         
-        image = Image.open(self.image_path).convert('RGB')
+        # Parallel image loading
+        with self.thread_pool as executor:
+            image_future = executor.submit(Image.open, self.image_path)
+            image = image_future.result().convert('RGB')
         
         transform = transforms.Compose([
             transforms.Resize((224, 224)),
@@ -151,7 +166,7 @@ class practice:
             )
         ])
         
-        return transform(image).unsqueeze(0)
+        return transform(image).unsqueeze(0).to(self.device)
 
     # Function to Extract Features
     def extract_features(self, tensor=None):
@@ -164,23 +179,24 @@ class practice:
             features_np = features.cpu().numpy().flatten()
             
             # Parallel statistics calculation
-            futures = {
-                'mean': np.mean(features_np),
-                'std': np.std(features_np),
-                'skewness': stats.skew(features_np),
-                'kurtosis': stats.kurtosis(features_np),
-                'min': np.min(features_np),
-                'max': np.max(features_np)
-            }
-            
-            self.feature_stats = {
-                'raw_mean': futures['mean'],
-                'raw_std': futures['std'],
-                'raw_skewness': futures['skewness'],
-                'raw_kurtosis': futures['kurtosis'],
-                'raw_min': futures['min'],
-                'raw_max': futures['max']
-            }
+            with self.thread_pool as executor:
+                futures = {
+                    'mean': executor.submit(np.mean, features_np),
+                    'std': executor.submit(np.std, features_np),
+                    'skewness': executor.submit(stats.skew, features_np),
+                    'kurtosis': executor.submit(stats.kurtosis, features_np),
+                    'min': executor.submit(np.min, features_np),
+                    'max': executor.submit(np.max, features_np)
+                }
+                
+                self.feature_stats = {
+                    'raw_mean': futures['mean'].result(),
+                    'raw_std': futures['std'].result(),
+                    'raw_skewness': futures['skewness'].result(),
+                    'raw_kurtosis': futures['kurtosis'].result(),
+                    'raw_min': futures['min'].result(),
+                    'raw_max': futures['max'].result()
+                }
             
             # Print normalized statistics
             print("\nNormalized Feature Statistics:")
@@ -227,18 +243,19 @@ class practice:
             img = img.astype(np.float32)
             
             # Parallel image processing
-            if len(img.shape) == 3:
-                img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            with self.thread_pool as executor:
+                if len(img.shape) == 3:
+                    img = executor.submit(cv2.cvtColor, img, cv2.COLOR_RGB2GRAY).result()
                 
-            img_norm = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX)
-            
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-            img_clahe = clahe.apply(img_norm.astype(np.uint8))
-            
-            kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
-            img_sharp = cv2.filter2D(img_clahe, -1, kernel)
-            
-            normalized = img_sharp.astype(np.float32) / 255.0
+                img_norm = executor.submit(cv2.normalize, img, None, 0, 255, cv2.NORM_MINMAX).result()
+                
+                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+                img_clahe = executor.submit(clahe.apply, img_norm.astype(np.uint8)).result()
+                
+                kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+                img_sharp = executor.submit(cv2.filter2D, img_clahe, -1, kernel).result()
+                
+                normalized = img_sharp.astype(np.float32) / 255.0
             
             self.normalized_img = normalized
             return normalized
